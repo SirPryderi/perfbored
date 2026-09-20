@@ -9,7 +9,7 @@ export type Layer = 'bodies' | 'far' | 'wires'
 export type Layout = 'single' | 'split'
 export type ViewKey = 'single' | 'split'
 export type Menu = 'main' | 'files' | null
-export type Panel = 'properties' | 'checks' | 'keys'
+export type Panel = 'properties' | 'parts' | 'checks' | 'keys'
 
 export interface Draft {
   side: Side
@@ -117,15 +117,27 @@ export const useEditor = create<EditorState>((set) => ({
   redo: () =>
     set((s) => (s.future.length ? { doc: s.future[0], future: s.future.slice(1), past: [...s.past, s.doc], selection: null } : s)),
   open: (fileId, doc) =>
-    set((s) => ({ fileId, doc, past: [], future: [], selection: null, placing: null, draft: null, fitNonce: s.fitNonce + 1 })),
+    set((s) => ({
+      fileId,
+      doc,
+      past: [],
+      future: [],
+      selection: null,
+      placing: null,
+      draft: null,
+      highlight: null,
+      fitNonce: s.fitNonce + 1,
+    })),
   setMenu: (menu) => set({ menu }),
-  setPanel: (panel) => set({ panel }),
+  setPanel: (panel) => set({ panel, highlight: null }),
   setPinEdit: (pinEdit) => set({ pinEdit }),
   notify: (notice) => {
     set({ notice })
     setTimeout(() => useEditor.getState().notice === notice && set({ notice: null }), 2500)
   },
-  select: (selection) => set((s) => ({ selection, panel: selection ? 'properties' : s.panel })),
+  // Selecting jumps to the properties, unless the part list is open: there the
+  // list is what you are working in, and it shows the selection itself.
+  select: (selection) => set((s) => ({ selection, panel: selection && s.panel !== 'parts' ? 'properties' : s.panel })),
   setTool: (tool) => set({ tool, placing: null, draft: null }),
   setPlacing: (placing) => set({ placing, tool: 'select', selection: null }),
   setWireColor: (wireColor) => set({ wireColor }),

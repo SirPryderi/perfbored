@@ -44,7 +44,7 @@ Checks are split into `fault` (certainly wrong) and `note` (worth seeing, often 
 
 A part is one `PartDef` in `src/library/parts/`, registered in `src/library/index.ts`. Adding parts should stay this cheap; when something is needed by two parts, factor it (`breakouts.tsx` builds the motor drivers and the generic breakout from one function; `labels.ts` handles editable pin-label lists).
 
-Flags carry meaning used across the app, so set them deliberately: `ref` (designator prefix in reports), `pads` (draw pads over the body — modules whose PCB would hide their pins), `stacks`, `overlay` (label-only, skip overlap checks), `flippable`, `annotation`, `pinLabel` (enables double-click/L labelling), and `suggestions` on a text prop (common values with a one-line "what it's for", aimed at a beginner).
+Flags carry meaning used across the app, so set them deliberately: `ref` (designator prefix in reports), `pads` (draw pads over the body — modules whose PCB would hide their pins), `stacks`, `overlay` (label-only, skip overlap checks), `flippable`, `annotation`, `pinLabel` (enables double-click/L labelling), `suggestions` on a text prop (common values with a one-line "what it's for", aimed at a beginner), and `caption` on a text prop that varies board to board (pin labels, a switch's legend) so the part tally groups by what you would actually buy.
 
 Pin order follows the part, not the drawing: a DIP IC or socket counts anticlockwise from the notch, a breakout runs down one column then the other, so pin N is index N-1 in `pins`, `pinNames` and the label list everywhere.
 

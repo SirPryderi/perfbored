@@ -22,6 +22,7 @@ import { useEditor, type Panel } from '../store'
 import { useAnalysis } from '../useAnalysis'
 import { commands, type CommandId } from '../keymap'
 import { Checks } from './Checks'
+import { Parts } from './Parts'
 import { Swatches } from './Swatches'
 import { Keys, Tip } from './Tip'
 
@@ -283,6 +284,7 @@ export function Inspector() {
     <Tabs.Root className="inspector" value={panel} onValueChange={(v) => e().setPanel(v as Panel)}>
       <Tabs.List className="tabs" aria-label="Panels">
         <Tabs.Trigger value="properties" className="tab">Properties</Tabs.Trigger>
+        <Tabs.Trigger value="parts" className="tab">Parts</Tabs.Trigger>
         <Tabs.Trigger value="checks" className="tab">
           Checks {faults > 0 && <span className="badge">{faults}</span>}
         </Tabs.Trigger>
@@ -290,6 +292,9 @@ export function Inspector() {
       </Tabs.List>
       <Tabs.Content value="properties" className="tab-body">
         {part ? <PartPanel part={part} /> : wire ? <WirePanel wire={wire} /> : <BoardPanel />}
+      </Tabs.Content>
+      <Tabs.Content value="parts" className="tab-body">
+        <Parts />
       </Tabs.Content>
       <Tabs.Content value="checks" className="tab-body">
         <Checks />

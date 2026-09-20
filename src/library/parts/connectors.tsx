@@ -15,7 +15,7 @@ export const header: PartDef = {
     { key: 'count', label: 'Pins', type: 'number', min: 1, max: 40 },
     { key: 'kind', label: 'Type', type: 'select', options: ['female', 'male'] },
     { key: 'color', label: 'Colour', type: 'color' },
-    { key: 'labels', label: 'Pin labels', type: 'text' },
+    { key: 'labels', label: 'Pin labels', type: 'text', caption: true },
   ],
   pinLabel: listLabels('labels'),
   pins: (p) => Array.from({ length: Number(p.count) }, (_, i): Hole => [i, 0]),
@@ -43,7 +43,7 @@ export const screwTerminal: PartDef = {
   defaults: { count: 2, labels: '' },
   props: [
     { key: 'count', label: 'Ways', type: 'number', min: 2, max: 6 },
-    { key: 'labels', label: 'Pin labels', type: 'text' },
+    { key: 'labels', label: 'Pin labels', type: 'text', caption: true },
   ],
   pinLabel: listLabels('labels'),
   pins: (p) => Array.from({ length: Number(p.count) }, (_, i): Hole => [i * 2, 0]),
@@ -75,7 +75,7 @@ export const jstXh: PartDef = {
   props: [
     { key: 'count', label: 'Pins', type: 'number', min: 2, max: 10 },
     { key: 'style', label: 'Style', type: 'select', options: ['vertical', 'right angle'] },
-    { key: 'labels', label: 'Pin labels', type: 'text' },
+    { key: 'labels', label: 'Pin labels', type: 'text', caption: true },
   ],
   pinLabel: listLabels('labels'),
   pins: (p) => Array.from({ length: Number(p.count) }, (_, i): Hole => [i, 0]),
@@ -191,7 +191,7 @@ export const offBoard: PartDef = {
   overlay: true,
   defaults: { label: 'Lead', style: 'lead' },
   props: [
-    { key: 'label', label: 'Label', type: 'text' },
+    { key: 'label', label: 'Label', type: 'text', caption: true },
     { key: 'style', label: 'Style', type: 'select', options: ['lead', 'pad'] },
   ],
   pinLabel: singleLabel,

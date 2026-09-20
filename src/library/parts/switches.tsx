@@ -11,7 +11,7 @@ function tactile(id: string, name: string, span: number, size: number, cap: numb
     category: 'Switches',
     ref: 'SW',
     defaults: { label: '' },
-    props: [{ key: 'label', label: 'Label', type: 'text' }],
+    props: [{ key: 'label', label: 'Label', type: 'text', caption: true }],
     pins: () => [[0, 0], [span, 0], [0, 2], [span, 2]],
     pinNames: () => {
       const side = (s: string, other: string) => `${s} · always joined to the other ${s}, pressing joins it to ${other}`

@@ -37,7 +37,7 @@ export function breakout(b: Breakout): PartDef {
     pads: true,
     ref: 'U',
     defaults: b.defaults,
-    props: [...(b.props ?? []), { key: 'left', label: 'Left pins', type: 'text' }, { key: 'right', label: 'Right pins', type: 'text' }],
+    props: [...(b.props ?? []), { key: 'left', label: 'Left pins', type: 'text', caption: true }, { key: 'right', label: 'Right pins', type: 'text', caption: true }],
     pinLabel: columnLabels('left', 'right', (p) => columns(p).left.length),
     pins: (p) => {
       const { left, right } = columns(p)

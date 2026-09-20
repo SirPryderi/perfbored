@@ -30,7 +30,7 @@ function dip(id: string, name: string, socket: boolean): PartDef {
       { key: 'label', label: 'Label', type: 'text' },
       { key: 'pins', label: 'Legs', type: 'number', min: 2, max: 64 },
       { key: 'width', label: 'Width in holes', type: 'number', min: 2, max: 12 },
-      { key: 'labels', label: 'Pin labels', type: 'text' },
+      { key: 'labels', label: 'Pin labels', type: 'text', caption: true },
     ],
     pinLabel: listLabels('labels'),
     pins: dipPins,

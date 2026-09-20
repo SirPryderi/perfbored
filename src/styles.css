@@ -252,6 +252,19 @@ kbd {
 .checks li.fault::before { background: var(--danger); }
 .checks li:hover { outline: 1px solid var(--line-strong); }
 .checks-empty { font-size: 12px; color: var(--ink-2); margin: 0; }
+.part-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.part-list button {
+  display: grid; grid-template-columns: 26px minmax(0, 1fr) auto auto; align-items: baseline; gap: 8px; width: 100%;
+  padding: 6px 8px; border: none; border-radius: 7px; background: none; color: inherit; text-align: left; cursor: pointer;
+}
+.part-list button:hover { background: var(--raised); }
+.part-list button[aria-current='true'] { background: var(--raised); box-shadow: inset 0 0 0 1px var(--accent); }
+.tally { color: var(--ink-2); font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
+.part-name { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.part-name em { color: var(--ink-2); font-style: normal; }
+.part-name em::before { content: ' · '; }
+.part-colors { display: flex; gap: 3px; }
+.swatch.tiny { width: 9px; height: 9px; cursor: inherit; }
 .notice { color: var(--accent); }
 
 /* stage */

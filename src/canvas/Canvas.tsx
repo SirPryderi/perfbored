@@ -97,6 +97,8 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
     return new Set([...seen].filter(([, n]) => n > 1).map(([k]) => k))
   }, [placed])
 
+  const rings = useMemo(() => [...new Map((highlight ?? []).map((h) => [holeKey(h), h])).values()], [highlight])
+
   const [ready, setReady] = useState(false)
   useEffect(() => {
     const svg = svgRef.current!
@@ -216,6 +218,7 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
   const onPointerMove = (e: React.PointerEvent) => {
     const s = useEditor.getState()
     const hole = holeAt(e)
+    if (s.highlight) s.setHighlight(null)
     if (!s.hover || s.hover.side !== facing || s.hover.hole[0] !== hole[0] || s.hover.hole[1] !== hole[1])
       s.setHover({ hole, side: facing })
     const d = drag.current
@@ -331,9 +334,9 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
             />
           )}
           {here && (tool === 'wire' || placing || hoverPins.length > 0) && <HoverRing board={board} hole={here} />}
-          {highlight?.map((h) => {
+          {rings.map((h) => {
             const { x, y } = holeToMm(board, h)
-            return <circle key={`hl${h}`} className="check-ring" cx={x} cy={y} r={1.6} />
+            return <circle key={holeKey(h)} className="check-ring" cx={x} cy={y} r={1.6} />
           })}
         </g>
       </svg>

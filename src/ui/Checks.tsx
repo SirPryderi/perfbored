@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useEditor } from '../store'
 import { useAnalysis } from '../useAnalysis'
 
@@ -5,6 +6,7 @@ import { useAnalysis } from '../useAnalysis'
 export function Checks() {
   const { checks } = useAnalysis()
   const setHighlight = useEditor((s) => s.setHighlight)
+  useEffect(() => () => setHighlight(null), [setHighlight])
   if (!checks.length) return <p className="checks-empty">No problems found.</p>
   return (
     <ul className="checks" onMouseLeave={() => setHighlight(null)}>

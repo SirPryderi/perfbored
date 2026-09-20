@@ -59,7 +59,7 @@ export interface Suggestion {
 
 export type PropSpec =
   | { key: string; label: string; type: 'select'; options: string[] }
-  | { key: string; label: string; type: 'text'; suggestions?: Suggestion[] }
+  | { key: string; label: string; type: 'text'; suggestions?: Suggestion[]; caption?: boolean }
   | { key: string; label: string; type: 'number'; min: number; max: number }
   | { key: string; label: string; type: 'color' }
 
