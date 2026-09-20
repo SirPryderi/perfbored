@@ -1,5 +1,6 @@
 import { useShallow } from 'zustand/react/shallow'
-import { pinsAt } from '../library'
+import { docBoard, pinsAt } from '../library'
+import { coords } from '../model/naming'
 import { useEditor } from '../store'
 import { useAnalysis } from '../useAnalysis'
 
@@ -21,15 +22,17 @@ export function StatusBar() {
       drafting: !!s.draft,
       notice: s.notice,
       parts: s.doc.parts,
+      doc: s.doc,
     })),
   )
+  const at = coords(s.doc, docBoard(s.doc)).hole
   const faults = useAnalysis().checks.filter((c) => c.level === 'fault').length
   const pins = s.hover ? pinsAt(s.parts, s.hover.hole) : []
 
   return (
     <footer className="status">
       <span className="coords">
-        {s.hover ? `col ${s.hover.hole[0] + 1} · row ${s.hover.hole[1] + 1} · ${s.hover.side}` : '—'}
+        {s.hover ? `${at(s.hover.hole)} · ${s.hover.side}` : '—'}
       </span>
       {pins.length > 0 && (
         <span className="pin-name">{pins.map((p) => [p.name, p.detail].filter(Boolean).join(' · ') + ` (${p.part})`).join(' / ')}</span>

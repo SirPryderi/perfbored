@@ -1,4 +1,5 @@
 import { boardOrigin, PITCH } from '../model/geometry'
+import type { Coords } from '../model/naming'
 import type { BoardDef } from '../model/types'
 
 const MOUNT_INSET = 2.5
@@ -20,7 +21,7 @@ function Label({ x, y, anchor, mirrored, className = 'axis', children }: {
   )
 }
 
-export function BoardView({ board, mirrored }: { board: BoardDef; mirrored: boolean }) {
+export function BoardView({ board, coords, mirrored }: { board: BoardDef; coords: Coords; mirrored: boolean }) {
   const { x: ox, y: oy } = boardOrigin(board)
   const { width: w, height: h } = board
   const corners = [
@@ -38,7 +39,10 @@ export function BoardView({ board, mirrored }: { board: BoardDef; mirrored: bool
       holes.push(<circle key={`${c},${r}`} className="hole" cx={x} cy={y} r={0.38} />)
     }
   }
-  const ticks = (count: number) => Array.from({ length: count }, (_, i) => i).filter((i) => i === 0 || (i + 1) % 5 === 0)
+  // Ticks follow the printed numbering, not the model index, so they land on
+  // the first hole and then every fifth as the board itself counts them.
+  const ticks = (count: number, index: (i: number) => number) =>
+    Array.from({ length: count }, (_, i) => i).filter((i) => index(i) === 0 || (index(i) + 1) % 5 === 0)
 
   return (
     <g>
@@ -47,11 +51,11 @@ export function BoardView({ board, mirrored }: { board: BoardDef; mirrored: bool
         <circle key={i} className="mount" cx={x} cy={y} r={1.4} />
       ))}
       {holes}
-      {ticks(board.cols).map((c) => (
-        <Label key={`c${c}`} x={ox + c * PITCH} y={-1.6} anchor="middle" mirrored={mirrored}>{c + 1}</Label>
+      {ticks(board.cols, coords.colIndex).map((c) => (
+        <Label key={`c${c}`} x={ox + c * PITCH} y={-1.6} anchor="middle" mirrored={mirrored}>{coords.col(c)}</Label>
       ))}
-      {ticks(board.rows).map((r) => (
-        <Label key={`r${r}`} x={-1.6} y={oy + r * PITCH + 0.6} anchor="end" mirrored={mirrored}>{r + 1}</Label>
+      {ticks(board.rows, coords.rowIndex).map((r) => (
+        <Label key={`r${r}`} x={-1.6} y={oy + r * PITCH + 0.6} anchor="end" mirrored={mirrored}>{coords.row(r)}</Label>
       ))}
       <Label className="axis caption" x={mirrored ? w : 0} y={h + 4.5} anchor={mirrored ? 'end' : 'start'} mirrored={mirrored}>
         {board.name} · {board.cols} × {board.rows} holes · {mirrored ? 'back' : 'front'}

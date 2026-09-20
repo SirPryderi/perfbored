@@ -25,6 +25,7 @@ Deployment is GitHub Pages via `.github/workflows/deploy.yml` on push to `main`.
 - **Holes are the unit.** `Hole = [col, row]`, 0-based in the model and 1-based everywhere a human reads it (`C5R3`). Part positions are holes; part drawings are millimetres relative to the part's first pin.
 - **Board coordinates are always as seen from the front.** A part on the back, or mounted upside down, is mirrored: `isMirrored(part) = (side === 'back') !== flipped`. `orient()` and `partTransform()` are the only places that know this; everything else goes through them, including the analysis and the report.
 - **Viewing the back mirrors the canvas**, which cancels the part's own mirror, so a back part reads correctly from the back. Text needs the opposite treatment: all part text goes through `Upright`, which un-mirrors and un-inverts using the `PartView` passed to `render`. Never use a bare `<text>` in a part.
+- **Hole names are display only.** Holes stay `[col, row]` from the top-left in the model, whatever the board is printed with; `coords(doc, board)` in `model/naming.ts` turns one into the name the user sees, and every message, axis and report goes through it. A doc also carries `portrait`, and `docBoard(doc)` is the board with its axes swapped — use it, never `boardById`, wherever real dimensions matter. Turning the board rewrites part and wire coordinates once (`rotateBoard`), so nothing downstream has to know.
 - **Mirroring a part around its origin moves it**, so `mirrorInPlace` in `actions.ts` shifts it back so its legs keep the same holes. Any new transform that mirrors must do the same.
 
 ## Connectivity lives in `analysis.ts`
@@ -45,6 +46,8 @@ A part is one `PartDef` in `src/library/parts/`, registered in `src/library/inde
 
 Flags carry meaning used across the app, so set them deliberately: `ref` (designator prefix in reports), `pads` (draw pads over the body — modules whose PCB would hide their pins), `stacks`, `overlay` (label-only, skip overlap checks), `flippable`, `annotation`, `pinLabel` (enables double-click/L labelling), and `suggestions` on a text prop (common values with a one-line "what it's for", aimed at a beginner).
 
+Pin order follows the part, not the drawing: a DIP IC or socket counts anticlockwise from the notch, a breakout runs down one column then the other, so pin N is index N-1 in `pins`, `pinNames` and the label list everywhere.
+
 Footprints come from real parts and the exact numbers matter. Where clones differ, expose the variation as a prop (OLED pin order, TO-92 pinout, XT30 polarity, breakout pin labels) rather than guessing, and say so in the reply.
 
 ## State, keys, canvas
@@ -58,4 +61,4 @@ Footprints come from real parts and the exact numbers matter. Where clones diffe
 
 The app is deliberately lenient about what real hand soldering allows, and strict about telling the user what it assumed. When a new capability blurs that line, prefer surfacing it in Checks over silently deciding.
 
-Known gaps, roughly in the order they have come up: dragging a whole wire segment sideways; inserting or deleting a wire vertex; multi-select; a 1:1 print or SVG export for drilling and layout; more part variants as the user's parts bin grows. Board orientation is landscape-only.
+Known gaps, roughly in the order they have come up: dragging a whole wire segment sideways; inserting or deleting a wire vertex; multi-select; a 1:1 print or SVG export for drilling and layout; more part variants as the user's parts bin grows.

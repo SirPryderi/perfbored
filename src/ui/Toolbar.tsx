@@ -12,9 +12,22 @@ import {
 } from '@radix-ui/react-icons'
 import { DropdownMenu, Toolbar as Bar } from 'radix-ui'
 import { useShallow } from 'zustand/react/shallow'
-import { changeBoard, copyForReview, deleteFile, duplicateFile, exportJson, importJson, newBoard, openFile } from '../actions'
+import {
+  changeBoard,
+  copyForReview,
+  deleteFile,
+  duplicateFile,
+  exportJson,
+  importJson,
+  newBoard,
+  openFile,
+  rotateBoard,
+  setNaming,
+  setOrigin,
+} from '../actions'
 import { commands, type CommandId } from '../keymap'
 import { boards } from '../library'
+import { namingOf, originLabel, originOf, ORIGINS, type Naming, type Origin } from '../model/naming'
 import { useEditor, type Layer, type Layout, type Tool } from '../store'
 import { Keys, Tip } from './Tip'
 
@@ -66,6 +79,8 @@ export function Toolbar() {
     useShallow((s) => ({
       name: s.doc.name,
       board: s.doc.board,
+      naming: namingOf(s.doc),
+      origin: originOf(s.doc),
       fileId: s.fileId,
       files: s.files,
       menu: s.menu,
@@ -100,6 +115,38 @@ export function Toolbar() {
               <DropdownMenu.Portal>
                 <DropdownMenu.SubContent className="menu" sideOffset={4}>
                   <BoardSizes value={s.board} onPick={changeBoard} />
+                </DropdownMenu.SubContent>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Sub>
+            <DropdownMenu.Sub>
+              <DropdownMenu.SubTrigger className="menu-item">Turn board</DropdownMenu.SubTrigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.SubContent className="menu" sideOffset={4}>
+                  <Item command="rotateBoard" onSelect={() => rotateBoard(90)}>Quarter turn right</Item>
+                  <Item onSelect={() => rotateBoard(-90)}>Quarter turn left</Item>
+                  <Item onSelect={() => rotateBoard(180)}>Upside down</Item>
+                </DropdownMenu.SubContent>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Sub>
+            <DropdownMenu.Sub>
+              <DropdownMenu.SubTrigger className="menu-item">Hole labels</DropdownMenu.SubTrigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.SubContent className="menu" sideOffset={4}>
+                  <DropdownMenu.RadioGroup value={s.naming} onValueChange={(v) => setNaming(v as Naming)}>
+                    <DropdownMenu.RadioItem value="letters" className="menu-item">
+                      Letters and numbers <span className="menu-hint">C7</span>
+                    </DropdownMenu.RadioItem>
+                    <DropdownMenu.RadioItem value="grid" className="menu-item">
+                      Columns and rows <span className="menu-hint">C3R7</span>
+                    </DropdownMenu.RadioItem>
+                  </DropdownMenu.RadioGroup>
+                  <DropdownMenu.Separator className="menu-sep" />
+                  <DropdownMenu.Label className="menu-label">Numbers from</DropdownMenu.Label>
+                  <DropdownMenu.RadioGroup value={s.origin} onValueChange={(v) => setOrigin(v as Origin)}>
+                    {ORIGINS.map((o) => (
+                      <DropdownMenu.RadioItem key={o} value={o} className="menu-item">{originLabel(o)}</DropdownMenu.RadioItem>
+                    ))}
+                  </DropdownMenu.RadioGroup>
                 </DropdownMenu.SubContent>
               </DropdownMenu.Portal>
             </DropdownMenu.Sub>

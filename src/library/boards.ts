@@ -1,4 +1,4 @@
-import type { BoardDef } from '../model/types'
+import type { BoardDef, Doc } from '../model/types'
 
 export const boards: BoardDef[] = [
   { id: 'perf-2x8', name: '2 × 8 cm', width: 80, height: 20, cols: 28, rows: 8 },
@@ -10,3 +10,19 @@ export const boards: BoardDef[] = [
 ]
 
 export const boardById = (id: string) => boards.find((b) => b.id === id) ?? boards[3]
+
+// Board sizes are listed landscape; a doc turned on its side uses the same
+// board with its axes swapped. Variants are built once so the identity stays
+// stable for effect dependencies.
+const turn = (b: BoardDef): BoardDef => ({
+  ...b,
+  name: b.name.replace(/^(\d+) × (\d+)/, '$2 × $1'),
+  width: b.height,
+  height: b.width,
+  cols: b.rows,
+  rows: b.cols,
+})
+const portrait = new Map(boards.map((b) => [b.id, turn(b)]))
+
+export const docBoard = (doc: Doc) =>
+  doc.portrait ? portrait.get(doc.board) ?? turn(boardById(doc.board)) : boardById(doc.board)

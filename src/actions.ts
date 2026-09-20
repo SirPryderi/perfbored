@@ -1,6 +1,7 @@
-import { partById } from './library'
+import { docBoard, partById } from './library'
 import { emptyDoc, newId, parseDoc, removeById, updatePart } from './model/doc'
-import { partPins } from './model/geometry'
+import { isMirrored, partPins } from './model/geometry'
+import type { Naming, Origin } from './model/naming'
 import { simplify } from './model/routing'
 import { listFiles, loadFile, removeFile, saveFile } from './files'
 import type { Doc, Hole, PartDef, PartInstance, Rotation } from './model/types'
@@ -140,6 +141,31 @@ export function deleteFile(id: string) {
   if (next) openFile(next.id)
   else newBoard()
 }
+
+// Turning the board leaves every part where it physically is: holes rotate
+// with the board, and a mirrored part turns the other way, since its mirror is
+// applied after its own rotation.
+export function rotateBoard(delta: 90 | -90 | 180) {
+  const s = state()
+  const { cols, rows } = docBoard(s.doc)
+  const map = ([c, r]: Hole): Hole =>
+    delta === 90 ? [rows - 1 - r, c] : delta === -90 ? [r, cols - 1 - c] : [cols - 1 - c, rows - 1 - r]
+  s.change((d) => ({
+    ...d,
+    portrait: delta === 180 ? d.portrait : !d.portrait,
+    parts: d.parts.map((p) => {
+      const [col, row] = map([p.col, p.row])
+      const spin = isMirrored(p) ? -delta : delta
+      return { ...p, col, row, rot: (((p.rot + spin + 360) % 360) as Rotation) }
+    }),
+    wires: d.wires.map((w) => ({ ...w, points: w.points.map(map) })),
+  }))
+  s.requestFit()
+}
+
+export const setNaming = (naming: Naming) => state().change((d) => ({ ...d, naming }))
+
+export const setOrigin = (origin: Origin) => state().change((d) => ({ ...d, origin }))
 
 export function changeBoard(board: string) {
   state().change((d) => ({ ...d, board }))

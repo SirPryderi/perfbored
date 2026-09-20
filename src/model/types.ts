@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { Naming, Origin } from './naming'
 
 export type Side = 'front' | 'back'
 export type Rotation = 0 | 90 | 180 | 270
@@ -28,6 +29,9 @@ export interface Doc {
   version: 1
   name: string
   board: string
+  portrait?: boolean
+  naming?: Naming
+  origin?: Origin
   parts: PartInstance[]
   wires: Wire[]
 }

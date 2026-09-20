@@ -1,5 +1,5 @@
 import { PITCH } from '../../model/geometry'
-import type { PartDef, Suggestion } from '../../model/types'
+import type { PartDef, Props, Suggestion } from '../../model/types'
 import { Upright } from './Upright'
 
 const LED_COLORS: Record<string, string> = {
@@ -88,24 +88,41 @@ const ELECTROLYTICS: Suggestion[] = [
   { value: '1000µ', hint: 'Big motors or long LED strips' },
 ]
 
+// Through-hole resistors come in a few body sizes and get their legs bent to
+// whatever pitch suits; the span is how many holes the part takes end to end.
+const span = (p: Props) => Math.max(3, Number(p.span) || 5) - 1
+
 export const resistor: PartDef = {
   id: 'resistor',
   name: 'Resistor',
   category: 'Basics',
   ref: 'R',
-  defaults: { value: '220' },
-  props: [{ key: 'value', label: 'Value (Ω)', type: 'text', suggestions: RESISTORS }],
-  pins: () => [[0, 0], [4, 0]],
-  bounds: () => ({ x: -0.6, y: -1.5, w: 4 * PITCH + 1.2, h: 3 }),
+  defaults: { value: '220', span: 5 },
+  props: [
+    { key: 'value', label: 'Value (\u03a9)', type: 'text', suggestions: RESISTORS },
+    { key: 'span', label: 'Hole span', type: 'number', min: 3, max: 13 },
+  ],
+  pins: (p) => [[0, 0], [span(p), 0]],
+  bounds: (p) => ({ x: -0.6, y: -1.5, w: span(p) * PITCH + 1.2, h: 3 }),
   render: (p) => {
-    const cx = 2 * PITCH
+    const cx = (span(p) * PITCH) / 2
+    const w = Math.min(6.4, span(p) * PITCH - 1.4)
+    const k = w / 6.4
     const bands = resistorBands(String(p.value))
     return (
       <>
-        <line className="lead" x1={0} y1={0} x2={4 * PITCH} y2={0} />
-        <rect className="body" x={cx - 3.2} y={-1.2} width={6.4} height={2.4} rx={1.1} />
+        <line className="lead" x1={0} y1={0} x2={span(p) * PITCH} y2={0} />
+        <rect className="body" x={cx - w / 2} y={-1.2} width={w} height={2.4} rx={1.1 * k} />
         {bands.map((c, i) => (
-          <rect key={i} className="band" x={cx - 2.2 + i * 1.2 + (i === 3 ? 0.6 : 0)} y={-1.15} width={0.6} height={2.3} style={{ fill: c }} />
+          <rect
+            key={i}
+            className="band"
+            x={cx + (-2.2 + i * 1.2 + (i === 3 ? 0.6 : 0)) * k}
+            y={-1.15}
+            width={0.6 * k}
+            height={2.3}
+            style={{ fill: c }}
+          />
         ))}
       </>
     )

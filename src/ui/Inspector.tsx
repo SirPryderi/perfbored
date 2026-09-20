@@ -1,10 +1,22 @@
 import { CheckIcon, ChevronDownIcon, CopyIcon, PinBottomIcon, PinTopIcon, ResetIcon, TrashIcon } from '@radix-ui/react-icons'
 import { DropdownMenu, Select, Tabs, ToggleGroup } from 'radix-ui'
 import { useShallow } from 'zustand/react/shallow'
-import { bringToFront, deleteSelection, duplicate, flipSide, rotate, sendToBack, upsideDown } from '../actions'
-import { boardById, partById } from '../library'
+import {
+  bringToFront,
+  deleteSelection,
+  duplicate,
+  flipSide,
+  rotate,
+  rotateBoard,
+  sendToBack,
+  setNaming,
+  setOrigin,
+  upsideDown,
+} from '../actions'
+import { docBoard, partById } from '../library'
 import { updatePart, updateWire } from '../model/doc'
 import { PITCH } from '../model/geometry'
+import { coords, namingOf, originLabel, originOf, ORIGINS, type Naming, type Origin } from '../model/naming'
 import type { PartInstance, PropSpec, PropValue, Side, Wire } from '../model/types'
 import { useEditor, type Panel } from '../store'
 import { useAnalysis } from '../useAnalysis'
@@ -91,63 +103,66 @@ function Field({ spec, value, onChange }: { spec: PropSpec; value: PropValue; on
 }
 
 function PartPanel({ part }: { part: PartInstance }) {
+  const doc = useEditor((s) => s.doc)
   const def = partById(part.def)
   if (!def) return null
   const props = { ...def.defaults, ...part.props }
   return (
     <>
       <h2>{def.name}</h2>
-      {!def.annotation && (
+      <div className="fields">
+        {!def.annotation && (
+          <div className="row">
+            <label>Side</label>
+            <SideToggle value={part.side} onChange={(side) => side !== part.side && flipSide()} />
+          </div>
+        )}
+        {def.flippable && (
+          <div className="row">
+            <label>Mounted</label>
+            <ToggleGroup.Root
+              type="single"
+              className="segmented"
+              value={part.flipped ? 'down' : 'up'}
+              onValueChange={(v) => v && (v === 'down') !== !!part.flipped && upsideDown()}
+            >
+              <ToggleGroup.Item value="up" className="segment">Normal</ToggleGroup.Item>
+              <ToggleGroup.Item value="down" className="segment">Upside down</ToggleGroup.Item>
+            </ToggleGroup.Root>
+          </div>
+        )}
         <div className="row">
-          <label>Side</label>
-          <SideToggle value={part.side} onChange={(side) => side !== part.side && flipSide()} />
+          <label>Rotation</label>
+          <div className="inline">
+            <button className="icon-button" onClick={() => rotate(-90)} aria-label="Rotate left"><ResetIcon /></button>
+            <button className="icon-button mirror" onClick={() => rotate(90)} aria-label="Rotate right"><ResetIcon /></button>
+            <span className="meta">{part.rot}°</span>
+          </div>
         </div>
-      )}
-      {def.flippable && (
         <div className="row">
-          <label>Mounted</label>
-          <ToggleGroup.Root
-            type="single"
-            className="segmented"
-            value={part.flipped ? 'down' : 'up'}
-            onValueChange={(v) => v && (v === 'down') !== !!part.flipped && upsideDown()}
-          >
-            <ToggleGroup.Item value="up" className="segment">Normal</ToggleGroup.Item>
-            <ToggleGroup.Item value="down" className="segment">Upside down</ToggleGroup.Item>
-          </ToggleGroup.Root>
+          <label>Hole</label>
+          <span className="meta">{coords(doc, docBoard(doc)).hole([part.col, part.row])}</span>
         </div>
-      )}
-      <div className="row">
-        <label>Rotation</label>
-        <div className="inline">
-          <button className="icon-button" onClick={() => rotate(-90)} aria-label="Rotate left"><ResetIcon /></button>
-          <button className="icon-button mirror" onClick={() => rotate(90)} aria-label="Rotate right"><ResetIcon /></button>
-          <span className="meta">{part.rot}°</span>
-        </div>
-      </div>
-      <div className="row">
-        <label>Hole</label>
-        <span className="meta">col {part.col + 1} · row {part.row + 1}</span>
-      </div>
-      {def.props?.map((spec) => (
-        <div className={spec.type === 'color' ? 'row column' : 'row'} key={spec.key}>
-          <label>{spec.label}</label>
-          <Field
-            spec={spec}
-            value={props[spec.key]}
-            onChange={(v) => e().preview((d) => updatePart(d, part.id, { props: { ...part.props, [spec.key]: v } }))}
-          />
-        </div>
-      ))}
-      <div className="row">
-        <label>Order</label>
-        <div className="inline">
-          <Tip command="front">
-            <button className="icon-button" onClick={bringToFront} aria-label="Bring to front"><PinTopIcon /></button>
-          </Tip>
-          <Tip command="back">
-            <button className="icon-button" onClick={sendToBack} aria-label="Send to back"><PinBottomIcon /></button>
-          </Tip>
+        {def.props?.map((spec) => (
+          <div className={spec.type === 'color' ? 'row column' : 'row'} key={spec.key}>
+            <label>{spec.label}</label>
+            <Field
+              spec={spec}
+              value={props[spec.key]}
+              onChange={(v) => e().preview((d) => updatePart(d, part.id, { props: { ...part.props, [spec.key]: v } }))}
+            />
+          </div>
+        ))}
+        <div className="row">
+          <label>Order</label>
+          <div className="inline">
+            <Tip command="front">
+              <button className="icon-button" onClick={bringToFront} aria-label="Bring to front"><PinTopIcon /></button>
+            </Tip>
+            <Tip command="back">
+              <button className="icon-button" onClick={sendToBack} aria-label="Send to back"><PinBottomIcon /></button>
+            </Tip>
+          </div>
         </div>
       </div>
       <div className="actions">
@@ -167,17 +182,19 @@ function WirePanel({ wire }: { wire: Wire }) {
   return (
     <>
       <h2>Wire</h2>
-      <div className="row">
-        <label>Side</label>
-        <SideToggle value={wire.side} onChange={(side) => set({ side })} />
-      </div>
-      <div className="row column">
-        <label>Colour</label>
-        <Swatches value={wire.color} onChange={(color) => set({ color })} />
-      </div>
-      <div className="row">
-        <label>Length</label>
-        <span className="meta">{(holes * PITCH).toFixed(1)} mm</span>
+      <div className="fields">
+        <div className="row">
+          <label>Side</label>
+          <SideToggle value={wire.side} onChange={(side) => set({ side })} />
+        </div>
+        <div className="row column">
+          <label>Colour</label>
+          <Swatches value={wire.color} onChange={(color) => set({ color })} />
+        </div>
+        <div className="row">
+          <label>Length</label>
+          <span className="meta">{(holes * PITCH).toFixed(1)} mm</span>
+        </div>
       </div>
       <div className="actions">
         <button className="button danger" onClick={deleteSelection}><TrashIcon /> Delete</button>
@@ -188,13 +205,58 @@ function WirePanel({ wire }: { wire: Wire }) {
 
 function BoardPanel() {
   const { doc } = useEditor(useShallow((s) => ({ doc: s.doc })))
-  const board = boardById(doc.board)
+  const board = docBoard(doc)
   return (
     <>
       <h2>{board.name} board</h2>
-      <div className="row"><label>Holes</label><span className="meta">{board.cols} × {board.rows}</span></div>
-      <div className="row"><label>Parts</label><span className="meta">{doc.parts.length}</span></div>
-      <div className="row"><label>Wires</label><span className="meta">{doc.wires.length}</span></div>
+      <div className="fields">
+        <div className="row"><label>Holes</label><span className="meta">{board.cols} × {board.rows}</span></div>
+        <div className="row"><label>Parts</label><span className="meta">{doc.parts.length}</span></div>
+        <div className="row"><label>Wires</label><span className="meta">{doc.wires.length}</span></div>
+        <div className="row">
+          <label>Turn</label>
+          <div className="inline">
+            <Tip command="rotateBoard">
+              <button className="icon-button" onClick={() => rotateBoard(-90)} aria-label="Turn the board left"><ResetIcon /></button>
+            </Tip>
+            <button className="icon-button mirror" onClick={() => rotateBoard(90)} aria-label="Turn the board right"><ResetIcon /></button>
+            <span className="meta">{doc.portrait ? 'portrait' : 'landscape'}</span>
+          </div>
+        </div>
+        <div className="row">
+          <label>Numbers from</label>
+          <Select.Root value={originOf(doc)} onValueChange={(v) => setOrigin(v as Origin)}>
+            <Select.Trigger className="input select-trigger" aria-label="Numbers from">
+              <Select.Value />
+              <Select.Icon><ChevronDownIcon /></Select.Icon>
+            </Select.Trigger>
+            <Select.Portal>
+              <Select.Content className="menu" position="popper" sideOffset={4}>
+                <Select.Viewport>
+                  {ORIGINS.map((o) => (
+                    <Select.Item key={o} value={o} className="menu-item">
+                      <Select.ItemText>{originLabel(o)}</Select.ItemText>
+                      <Select.ItemIndicator className="menu-hint"><CheckIcon /></Select.ItemIndicator>
+                    </Select.Item>
+                  ))}
+                </Select.Viewport>
+              </Select.Content>
+            </Select.Portal>
+          </Select.Root>
+        </div>
+        <div className="row">
+          <label>Hole labels</label>
+          <ToggleGroup.Root
+            type="single"
+            className="segmented"
+            value={namingOf(doc)}
+            onValueChange={(v) => v && setNaming(v as Naming)}
+          >
+            <ToggleGroup.Item value="letters" className="segment">C7</ToggleGroup.Item>
+            <ToggleGroup.Item value="grid" className="segment">C3R7</ToggleGroup.Item>
+          </ToggleGroup.Root>
+        </div>
+      </div>
     </>
   )
 }

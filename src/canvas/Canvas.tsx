@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { boardById, partById, pinsAt } from '../library'
+import { docBoard, partById, pinsAt } from '../library'
 import { newId, updatePart, updateWire } from '../model/doc'
 import { centreOffset, holeKey, holeToMm, mmToHole, partPins } from '../model/geometry'
 import { editPinLabel, finishDraft } from '../actions'
@@ -8,6 +8,7 @@ import { corner, moveVertex, naturalBend, simplify } from '../model/routing'
 import type { BoardDef, Hole, PartInstance, Side } from '../model/types'
 import { useEditor, type Draft, type ViewKey } from '../store'
 import { useAnalysis } from '../useAnalysis'
+import { coords } from '../model/naming'
 import { BoardView } from './BoardView'
 import { PartBody, PinsLayer, SelectionOutline, type Placed } from './PartView'
 import { PinLabelEditor } from './PinLabelEditor'
@@ -77,7 +78,7 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
       pinEdit: s.pinEdit,
     })),
   )
-  const board = boardById(doc.board)
+  const board = docBoard(doc)
   const { shown, squash } = useFlip(facing)
   const mirrored = shown === 'back'
 
@@ -294,7 +295,7 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
         onDoubleClick={(e) => tool === 'select' && !placing && editPinLabel(holeAt(e), facing)}
       >
         <g transform={world}>
-          <BoardView board={board} mirrored={mirrored} />
+          <BoardView board={board} coords={coords(doc, board)} mirrored={mirrored} />
           {layers.far && layers.bodies && far.map((p) => <PartBody key={p.part.id} {...p} board={board} far />)}
           {layers.far && layers.wires &&
             doc.wires.filter((w) => w.side !== shown).map((w) => <WireView key={w.id} {...w} board={board} far />)}

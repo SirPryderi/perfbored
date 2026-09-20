@@ -1,6 +1,7 @@
-import { analyze, at } from './analysis'
-import { boardById, partById } from './library'
+import { analyze } from './analysis'
+import { docBoard, partById } from './library'
 import { namedPins, PITCH } from './model/geometry'
+import { coords } from './model/naming'
 import { WIRE_COLORS } from './model/routing'
 import type { Doc, Wire } from './model/types'
 
@@ -10,13 +11,19 @@ const wireLength = (w: Wire) =>
   w.points.slice(1).reduce((n, p, i) => n + Math.hypot(p[0] - w.points[i][0], p[1] - w.points[i][1]), 0) * PITCH
 
 export function describe(doc: Doc): string {
-  const board = boardById(doc.board)
+  const board = docBoard(doc)
+  const c = coords(doc, board)
+  const at = c.hole
   const a = analyze(doc)
   const lines: string[] = []
   const out = (s = '') => lines.push(s)
 
   out(`PERFBOARD LAYOUT: "${doc.name}"`)
-  out(`Board: ${board.name}, ${board.cols} columns × ${board.rows} rows. Holes are C<col>R<row>, 1-based, as seen from the FRONT (C1 = left, R1 = top).`)
+  const scheme =
+    c.naming === 'letters'
+      ? 'Holes are named <column letter><row number>, e.g. C7'
+      : 'Holes are C<col>R<row>, 1-based'
+  out(`Board: ${board.name}, ${board.cols} columns × ${board.rows} rows. ${scheme}, counted from the ${c.origin} corner as seen from the FRONT.`)
   out('Parts on the back, or mounted upside down, are listed with the holes their legs go through (front coordinates).')
   out('Connections: a wire connects its ends, any pin whose hole it runs through, and any wire that ends on it. Wires that merely cross are insulated.')
   out("Pins in the same hole are connected, as are same-named pins on one part (two GND pins, a button's paired legs). Pin headers under modules are sockets, not shorts.")
@@ -27,12 +34,14 @@ export function describe(doc: Doc): string {
     const def = partById(part.def)
     if (!def || def.annotation) continue
     const holes = namedPins(part, def).map((p) => p.hole)
-    const cols = holes.map((h) => h[0] + 1)
-    const rows = holes.map((h) => h[1] + 1)
-    const span = holes.length ? `C${Math.min(...cols)}–C${Math.max(...cols)} × R${Math.min(...rows)}–R${Math.max(...rows)}` : ''
+    const cols = holes.map((h) => h[0]).sort((a, b) => c.colIndex(a) - c.colIndex(b))
+    const rows = holes.map((h) => h[1]).sort((a, b) => c.rowIndex(a) - c.rowIndex(b))
+    const span = holes.length
+      ? `${c.col(cols[0])}–${c.col(cols[cols.length - 1])} × ${c.row(rows[0])}–${c.row(rows[rows.length - 1])}`
+      : ''
     const props = Object.entries({ ...def.defaults, ...part.props })
       .filter(([, v]) => v !== '')
-      .map(([k, v]) => `${k}=${v}`)
+      .map(([k, v]) => `${k}=${String(v).includes(',') ? `"${v}"` : v}`)
       .join(', ')
     const mount = part.flipped ? ' · upside down' : ''
     out(`${a.refs.get(part.id)}  ${def.name} · ${part.side}${mount} · rot ${part.rot}° · pins ${span}${props ? ` · ${props}` : ''}`)

@@ -4,6 +4,7 @@ import { label, lightWindow } from './parts/annotations'
 import { ceramicCap, diode, electrolyticCap, led, piezo, resistor, transistor } from './parts/basics'
 import { header, jstXh, offBoard, screwTerminal, xt30 } from './parts/connectors'
 import { drv8833, genericBreakout, tb6612 } from './parts/breakouts'
+import { dipIc, dipSocket } from './parts/ics'
 import { esp32DevKit30, esp32DevKitC38, oled096, oled15 } from './parts/modules'
 import { barrelJack, fuseHolder } from './parts/power'
 import { button12, button6, pushLatch, slideSwitch } from './parts/switches'
@@ -16,6 +17,8 @@ export const parts: PartDef[] = [
   tb6612,
   drv8833,
   genericBreakout,
+  dipIc,
+  dipSocket,
   led,
   resistor,
   ceramicCap,
@@ -57,4 +60,4 @@ export function pinsAt(parts: PartInstance[], [c, r]: Hole) {
 
 export const categories = [...new Set(parts.map((p) => p.category))]
 
-export { boards, boardById } from './boards'
+export { boards, boardById, docBoard } from './boards'

@@ -1,5 +1,6 @@
-import { boardById, partById } from './library'
+import { docBoard, partById } from './library'
 import { holeKey, holeToMm, isMirrored, namedPins, rotateHole } from './model/geometry'
+import { coords } from './model/naming'
 import type { Doc, Hole, PartDef, PartInstance, Side, Wire } from './model/types'
 
 // Electrical and physical analysis of a board. Connectivity rules:
@@ -37,8 +38,6 @@ export interface Analysis {
   checks: Check[]
 }
 
-export const at = ([c, r]: Hole) => `C${c + 1}R${r + 1}`
-
 // Every hole a wire runs through, including its ends and bends.
 export function wireHoles(w: Wire): Hole[] {
   const out: Hole[] = [w.points[0]]
@@ -70,7 +69,7 @@ class Groups {
 
 function box(doc: Doc, part: PartInstance, def: PartDef) {
   const b = def.bounds({ ...def.defaults, ...part.props })
-  const origin = holeToMm(boardById(doc.board), [part.col, part.row])
+  const origin = holeToMm(docBoard(doc), [part.col, part.row])
   const corners = [
     [b.x, b.y],
     [b.x + b.w, b.y],
@@ -86,7 +85,8 @@ function box(doc: Doc, part: PartInstance, def: PartDef) {
 }
 
 export function analyze(doc: Doc): Analysis {
-  const board = boardById(doc.board)
+  const board = docBoard(doc)
+  const at = coords(doc, board).hole
   const placed = doc.parts.flatMap((part) => {
     const def = partById(part.def)
     return def && !def.annotation ? [{ part, def }] : []

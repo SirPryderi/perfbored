@@ -8,6 +8,7 @@ import {
   flipSide,
   newBoard,
   rotate,
+  rotateBoard,
   sendToBack,
   upsideDown,
 } from './actions'
@@ -42,6 +43,11 @@ export const commands = {
   far: { label: 'Show the other side', keys: [{ code: 'KeyE' }], run: layer('far') },
   labelPin: { label: 'Label the pin under the cursor (or double-click it)', keys: [{ code: 'KeyL' }], run: () => editPinLabel() },
   rotate: { label: 'Rotate (⇧ for the other way)', keys: [{ code: 'KeyR', anyShift: true }], run: (e) => rotate(e.shiftKey ? -90 : 90) },
+  rotateBoard: {
+    label: 'Turn the whole board (⇧ for the other way)',
+    keys: [{ code: 'KeyR', alt: true, anyShift: true }],
+    run: (e) => rotateBoard(e.shiftKey ? -90 : 90),
+  },
   otherSide: { label: 'Move part to the other side', keys: [{ code: 'KeyT' }, { code: 'KeyF', alt: true }], run: flipSide },
   upsideDown: { label: 'Mount module upside down', keys: [{ code: 'KeyY' }, { code: 'KeyU', alt: true }], run: upsideDown },
   front: { label: 'Bring to front', keys: [{ code: 'BracketRight', mod: true }], run: bringToFront },
