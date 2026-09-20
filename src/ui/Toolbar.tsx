@@ -2,6 +2,7 @@ import {
   ChevronDownIcon,
   ColumnsIcon,
   CursorArrowIcon,
+  GitHubLogoIcon,
   HamburgerMenuIcon,
   HandIcon,
   LoopIcon,
@@ -16,6 +17,8 @@ import { commands, type CommandId } from '../keymap'
 import { boards } from '../library'
 import { useEditor, type Layer, type Layout, type Tool } from '../store'
 import { Keys, Tip } from './Tip'
+
+export const REPO = 'https://github.com/SirPryderi/perfbored'
 
 const TOOLS: { id: Tool; icon: React.ReactNode }[] = [
   { id: 'select', icon: <CursorArrowIcon /> },
@@ -204,6 +207,14 @@ export function Toolbar() {
         <Bar.Button className="chip" onClick={() => e().flip()} disabled={s.layout === 'split'}>
           <LoopIcon /> {s.facing === 'front' ? 'Front' : 'Back'}
         </Bar.Button>
+      </Tip>
+
+      <div className="spacer" />
+
+      <Tip label="Source on GitHub">
+        <Bar.Link className="tool" href={REPO} target="_blank" rel="noreferrer" aria-label="Source on GitHub">
+          <GitHubLogoIcon />
+        </Bar.Link>
       </Tip>
 
       <input

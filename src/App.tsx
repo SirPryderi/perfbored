@@ -14,6 +14,7 @@ export function App() {
   const { layout, facing } = useEditor(useShallow((s) => ({ layout: s.layout, facing: s.facing })))
   return (
     <Tooltip.Provider delayDuration={400}>
+      <h1 className="page-title">Perfbored — a simple perfboard editor</h1>
       <div className="app">
         <Toolbar />
         <div className="main">

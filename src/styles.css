@@ -91,6 +91,11 @@ html, body, #root { height: 100%; margin: 0; }
 button { font: inherit; color: inherit; }
 input { font: inherit; color: inherit; }
 
+.page-title {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+
 .app { display: grid; grid-template-rows: auto 1fr auto; height: 100%; }
 .main { display: grid; grid-template-columns: 232px 1fr 256px; min-height: 0; }
 
@@ -109,7 +114,7 @@ input { font: inherit; color: inherit; }
 .tool, .chip, .icon-button {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   height: 30px; min-width: 30px; padding: 0 8px; border: 1px solid transparent; border-radius: 7px;
-  background: none; cursor: pointer; color: var(--ink-2);
+  background: none; cursor: pointer; color: var(--ink-2); text-decoration: none;
 }
 .tool:hover, .chip:hover, .icon-button:hover { background: var(--line); color: var(--ink); }
 .chip:is([aria-pressed='true'], [aria-checked='true']) { background: var(--accent-soft); color: var(--accent); }

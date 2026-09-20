@@ -3,11 +3,186 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23e9e4d8'/><g fill='%23a39d8f'><circle cx='4' cy='4' r='1.2'/><circle cx='8' cy='4' r='1.2'/><circle cx='12' cy='4' r='1.2'/><circle cx='4' cy='8' r='1.2'/><circle cx='12' cy='8' r='1.2'/><circle cx='4' cy='12' r='1.2'/><circle cx='8' cy='12' r='1.2'/><circle cx='12' cy='12' r='1.2'/></g><circle cx='8' cy='8' r='2' fill='%23d93a3a'/></svg>" />
-    <title>Perfbored</title>
+
+    <title>Perfbored — a simple perfboard editor for the browser</title>
+    <meta
+      name="description"
+      content="A free perfboard editor that runs in the browser. Lay out parts and wires on the 2.54 mm grid, on both sides of the board, and check the wiring before you solder."
+    />
+    <link rel="canonical" href="https://sirpryderi.github.io/perfbored/" />
+    <meta name="author" content="SirPryderi" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f4f3ef" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1b1b1a" media="(prefers-color-scheme: dark)" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Perfbored" />
+    <meta property="og:title" content="Perfbored — a simple perfboard editor for the browser" />
+    <meta
+      property="og:description"
+      content="Plan hand-wired perfboard online: parts and wires on the 2.54 mm grid, both sides of the board, and connection checks before you solder."
+    />
+    <meta property="og:url" content="https://sirpryderi.github.io/perfbored/" />
+    <meta property="og:image" content="https://sirpryderi.github.io/perfbored/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="A perfboard layout with a module, a resistor, an LED and coloured wires on a hole grid."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Perfbored — a simple perfboard editor for the browser" />
+    <meta
+      name="twitter:description"
+      content="Plan hand-wired perfboard online: parts and wires on the 2.54 mm grid, both sides of the board, and connection checks before you solder."
+    />
+    <meta name="twitter:image" content="https://sirpryderi.github.io/perfbored/og.png" />
+
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Perfbored",
+        "alternateName": "Perfbored perfboard editor",
+        "url": "https://sirpryderi.github.io/perfbored/",
+        "description": "A free perfboard editor that runs in the browser: parts and wires snapped to the 2.54 mm grid, on both sides of the board, with connection checks before soldering.",
+        "applicationCategory": "DesignApplication",
+        "applicationSubCategory": "Electronics CAD",
+        "operatingSystem": "Any, runs in a web browser",
+        "browserRequirements": "Requires JavaScript",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "author": { "@type": "Person", "name": "SirPryderi", "url": "https://github.com/SirPryderi" },
+        "codeRepository": "https://github.com/SirPryderi/perfbored",
+        "screenshot": "https://sirpryderi.github.io/perfbored/og.png",
+        "keywords": "perfboard editor, perfboard layout, stripboard alternative, protoboard, veroboard, hand wiring, 2.54 mm grid, electronics prototyping",
+        "featureList": [
+          "Snap parts and wires to the 2.54 mm perfboard grid",
+          "Lay out both the component side and the wiring side of the board",
+          "Part library of microcontrollers, displays, motor drivers, connectors, switches and basics",
+          "Connectivity checks that flag shorts and unconnected pins",
+          "Text report of the finished layout, hole by hole",
+          "Boards saved in the browser, exported and imported as JSON"
+        ]
+      }
+    </script>
+
+    <style>
+      /* Shown until the editor mounts, and to crawlers and readers without JavaScript.
+         React replaces the contents of #root, so this whole block disappears on boot.
+         Class names are prefixed because this shares a page with styles.css. */
+      #intro {
+        box-sizing: border-box;
+        max-width: 34rem;
+        margin: 0 auto;
+        padding: 10vh 1.5rem 4rem;
+        font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+        font-size: 15px;
+        line-height: 1.55;
+        color: #23221f;
+      }
+      #intro h1 {
+        margin: 0 0 0.25rem;
+        font-size: 2rem;
+        letter-spacing: -0.02em;
+      }
+      #intro h2 {
+        margin: 1.75rem 0 0.5rem;
+        font-size: 1rem;
+      }
+      #intro p,
+      #intro ul {
+        margin: 0 0 1rem;
+      }
+      #intro .intro-lede {
+        color: #6d6a63;
+      }
+      #intro ul {
+        padding-left: 1.1rem;
+      }
+      #intro a {
+        color: #2f6fdb;
+      }
+      #intro .intro-note {
+        color: #a29e95;
+      }
+      #intro .intro-nojs {
+        display: none;
+      }
+      body {
+        margin: 0;
+        background: #f4f3ef;
+      }
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #1b1b1a;
+        }
+        #intro {
+          color: #ecebe6;
+        }
+        #intro .intro-lede {
+          color: #a5a39c;
+        }
+        #intro a {
+          color: #6c9cf0;
+        }
+        #intro .intro-note {
+          color: #6f6d67;
+        }
+      }
+    </style>
+    <noscript>
+      <style>
+        #intro .intro-booting {
+          display: none;
+        }
+        #intro .intro-nojs {
+          display: block;
+        }
+      </style>
+    </noscript>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main id="intro">
+        <h1>Perfbored — a simple perfboard editor</h1>
+        <p class="intro-lede">
+          A free web app for laying out hand-wired perfboard. No account, no install, nothing
+          uploaded.
+        </p>
+        <p>
+          Perfbored is for planning a board before you solder it. Parts and wires snap to the
+          2.54&nbsp;mm hole grid, on both the component side and the wiring side, and every hole is
+          named the way you would count it off the board — <code>C5R3</code>. It is aimed at
+          hobbyists building one-off circuits on plain perfboard, protoboard or stripboard, rather
+          than at anyone laying out a PCB.
+        </p>
+
+        <h2>What the editor does</h2>
+        <ul>
+          <li>A part library covering microcontroller boards, OLED displays, motor drivers, connectors, switches, and the usual resistors, capacitors, diodes and LEDs.</li>
+          <li>Wiring on both sides of the board, with the far side ghosted so you can see through it.</li>
+          <li>Connection checks that separate faults, such as two nets shorted in one hole, from notes worth a second look.</li>
+          <li>A plain-text report of the finished layout, hole by hole, to follow at the bench.</li>
+          <li>Boards are kept in your browser and export to JSON; nothing is uploaded anywhere.</li>
+        </ul>
+
+        <h2>Source</h2>
+        <p>
+          Perfbored is a small personal project, and the source is small enough to read in an
+          afternoon: <a href="https://github.com/SirPryderi/perfbored">github.com/SirPryderi/perfbored</a>.
+          Issues and pull requests are welcome — adding a part to the library is one file, so if the
+          thing in your parts bin is missing, it is a short contribution.
+        </p>
+
+        <p class="intro-note intro-booting">Loading the editor…</p>
+        <p class="intro-note intro-nojs">The editor needs JavaScript. Please enable it and reload.</p>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
