@@ -52,3 +52,6 @@ The one rule worth knowing before you start: geometry is always stored as seen f
 front, and a part on the back is mirrored so it reads correctly when you flip the board.
 [CLAUDE.md](CLAUDE.md) goes through that and the rest of the internals in more detail.
 
+## Licence
+
+[MIT](LICENSE). Do whatever you like with it.
