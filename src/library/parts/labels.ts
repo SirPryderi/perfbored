@@ -1,4 +1,8 @@
-import type { PinLabel, Props } from '../../model/types'
+import type { PinLabel, PropSpec, Props } from '../../model/types'
+
+// An optional name for one instance — "Motor A", "Batt in" — shown on a leader
+// line when the Names layer is on, and in the tooltip, part list and report.
+export const NAME: PropSpec = { key: 'name', label: 'Name', type: 'text', caption: true }
 
 // Pin label lists are stored as text: comma separated, or space separated for
 // older boards. Labels may contain spaces once commas are in use.

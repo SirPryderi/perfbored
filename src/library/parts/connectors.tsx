@@ -1,7 +1,7 @@
 import { PITCH } from '../../model/geometry'
 import { WIRE_COLORS } from '../../model/routing'
 import type { Hole, PartDef, PinLabel } from '../../model/types'
-import { listLabels, pinLabelName, splitLabels } from './labels'
+import { listLabels, NAME, pinLabelName, splitLabels } from './labels'
 import { Upright } from './Upright'
 
 export const header: PartDef = {
@@ -10,8 +10,9 @@ export const header: PartDef = {
   category: 'Connectors',
   ref: 'J',
   stacks: true,
-  defaults: { count: 4, kind: 'female', color: WIRE_COLORS[1].value, labels: '' },
+  defaults: { count: 4, kind: 'female', color: WIRE_COLORS[1].value, labels: '', name: '' },
   props: [
+    NAME,
     { key: 'count', label: 'Pins', type: 'number', min: 1, max: 40 },
     { key: 'kind', label: 'Type', type: 'select', options: ['female', 'male'] },
     { key: 'color', label: 'Colour', type: 'color' },
@@ -40,8 +41,9 @@ export const screwTerminal: PartDef = {
   name: 'Screw terminal 5.08mm',
   category: 'Connectors',
   ref: 'J',
-  defaults: { count: 2, labels: '' },
+  defaults: { count: 2, labels: '', name: '' },
   props: [
+    NAME,
     { key: 'count', label: 'Ways', type: 'number', min: 2, max: 6 },
     { key: 'labels', label: 'Pin labels', type: 'text', caption: true },
   ],
@@ -71,8 +73,9 @@ export const jstXh: PartDef = {
   name: 'JST XH connector',
   category: 'Connectors',
   ref: 'J',
-  defaults: { count: 2, style: 'vertical', labels: '' },
+  defaults: { count: 2, style: 'vertical', labels: '', name: '' },
   props: [
+    NAME,
     { key: 'count', label: 'Pins', type: 'number', min: 2, max: 10 },
     { key: 'style', label: 'Style', type: 'select', options: ['vertical', 'right angle'] },
     { key: 'labels', label: 'Pin labels', type: 'text', caption: true },
@@ -127,8 +130,9 @@ export const xt30: PartDef = {
   name: 'XT30 board mount',
   category: 'Connectors',
   ref: 'J',
-  defaults: { style: 'vertical', gender: 'female', polarity: '+ −' },
+  defaults: { style: 'vertical', gender: 'female', polarity: '+ −', name: '' },
   props: [
+    NAME,
     { key: 'style', label: 'Style', type: 'select', options: ['vertical', 'right angle'] },
     { key: 'gender', label: 'Contacts', type: 'select', options: ['female', 'male'] },
     { key: 'polarity', label: 'Polarity', type: 'select', options: ['+ −', '− +'] },

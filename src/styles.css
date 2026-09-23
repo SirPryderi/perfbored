@@ -359,6 +359,11 @@ kbd {
 .selection { fill: none; stroke: var(--accent); stroke-width: 0.35; }
 .hover-ring { fill: none; stroke: var(--accent); stroke-width: 0.3; pointer-events: none; }
 .silk { font-size: 1.1px; fill: var(--ink); opacity: 0.75; }
+.names { pointer-events: none; }
+.name-lead { fill: none; stroke: var(--ink-3); stroke-width: 0.22; opacity: 0.5; }
+.name-dot { fill: var(--ink-3); opacity: 0.5; }
+.name-text { font-size: 2.2px; fill: var(--ink-2); }
+.name-tag.far { opacity: 0.45; }
 .canvas-wrap { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
 .pin-anchor { position: absolute; width: 0; height: 0; pointer-events: none; }
 .popover.pin-label { padding: 10px; z-index: 30; }

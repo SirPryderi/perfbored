@@ -53,7 +53,8 @@ export function pinsAt(parts: PartInstance[], [c, r]: Hole) {
       .filter(({ hole }) => hole[0] === c && hole[1] === r)
       .map(({ name }) => {
         const [pin, ...details] = name.split(' · ')
-        return { name: pin, detail: details.join(' · '), part: def.name, side: part.side }
+        const given = String(part.props.name ?? '').trim()
+        return { name: pin, detail: details.join(' · '), part: given ? `${def.name} · ${given}` : def.name, side: part.side }
       })
   })
 }

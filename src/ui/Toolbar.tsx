@@ -15,6 +15,7 @@ import { useShallow } from 'zustand/react/shallow'
 import {
   changeBoard,
   copyForReview,
+  copyJson,
   deleteFile,
   duplicateFile,
   exportJson,
@@ -43,6 +44,7 @@ const LAYERS: { id: Layer; label: string; command: CommandId }[] = [
   { id: 'bodies', label: 'Parts', command: 'parts' },
   { id: 'wires', label: 'Wires', command: 'wires' },
   { id: 'far', label: 'Other side', command: 'far' },
+  { id: 'names', label: 'Names', command: 'names' },
 ]
 
 function ago(time: number) {
@@ -109,6 +111,7 @@ export function Toolbar() {
             <Item command="open" onSelect={() => document.getElementById('open-file')?.click()}>Open from disk…</Item>
             <Item command="save" onSelect={exportJson}>Save to disk</Item>
             <Item command="review" onSelect={copyForReview}>Copy for review</Item>
+            <Item command="copyJson" onSelect={copyJson}>Copy as JSON</Item>
             <DropdownMenu.Separator className="menu-sep" />
             <DropdownMenu.Sub>
               <DropdownMenu.SubTrigger className="menu-item">Board size</DropdownMenu.SubTrigger>

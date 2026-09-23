@@ -177,6 +177,11 @@ export async function copyForReview() {
   state().notify('Copied a text description of this board — paste it into a chat to get it reviewed')
 }
 
+export async function copyJson() {
+  await navigator.clipboard.writeText(JSON.stringify(state().doc, null, 2))
+  state().notify('Copied this board as JSON — paste it into a chat, or into a file to open later')
+}
+
 export function exportJson() {
   const doc = state().doc
   const blob = new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' })

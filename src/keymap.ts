@@ -1,6 +1,7 @@
 import {
   bringToFront,
   copyForReview,
+  copyJson,
   deleteSelection,
   duplicate,
   editPinLabel,
@@ -41,6 +42,7 @@ export const commands = {
   parts: { label: 'Show parts', keys: [{ code: 'KeyQ' }], run: layer('bodies') },
   wires: { label: 'Show wires', keys: [{ code: 'KeyW' }], run: layer('wires') },
   far: { label: 'Show the other side', keys: [{ code: 'KeyE' }], run: layer('far') },
+  names: { label: 'Show connector names', keys: [{ code: 'KeyN' }], run: layer('names') },
   labelPin: { label: 'Label the pin under the cursor (or double-click it)', keys: [{ code: 'KeyL' }], run: () => editPinLabel() },
   rotate: { label: 'Rotate (⇧ for the other way)', keys: [{ code: 'KeyR', anyShift: true }], run: (e) => rotate(e.shiftKey ? -90 : 90) },
   rotateBoard: {
@@ -70,6 +72,7 @@ export const commands = {
   open: { label: 'Open from disk', keys: [{ code: 'KeyO', mod: true }], run: () => document.getElementById('open-file')?.click() },
   save: { label: 'Save to disk', keys: [{ code: 'KeyS', mod: true }], run: exportJson },
   review: { label: 'Copy for review', keys: [{ code: 'KeyC', mod: true, shift: true }], run: copyForReview },
+  copyJson: { label: 'Copy as JSON', keys: [{ code: 'KeyC', mod: true, alt: true }], run: copyJson },
 } satisfies Record<string, Command>
 
 export type CommandId = keyof typeof commands

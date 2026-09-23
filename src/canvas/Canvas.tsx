@@ -10,6 +10,7 @@ import { useEditor, type Draft, type ViewKey } from '../store'
 import { useAnalysis } from '../useAnalysis'
 import { coords } from '../model/naming'
 import { BoardView } from './BoardView'
+import { layoutNames, NamesLayer } from './NamesLayer'
 import { PartBody, PinsLayer, SelectionOutline, type Placed } from './PartView'
 import { PinLabelEditor } from './PinLabelEditor'
 import { WireHandles, WireView } from './WireView'
@@ -99,6 +100,11 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
 
   const rings = useMemo(() => [...new Map((highlight ?? []).map((h) => [holeKey(h), h])).values()], [highlight])
 
+  const names = useMemo(() => layoutNames(doc, board, shown), [doc, board, shown])
+
+  const content = useRef({ x: 0, y: 0, w: board.width, h: board.height })
+  content.current = layers.names && names.tags.length ? names.bounds : { x: 0, y: 0, w: board.width, h: board.height }
+
   const [ready, setReady] = useState(false)
   useEffect(() => {
     const svg = svgRef.current!
@@ -110,11 +116,12 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
   useEffect(() => {
     if (!ready) return
     const r = svgRef.current!.getBoundingClientRect()
-    const scale = Math.min((r.width - 90) / board.width, (r.height - 90) / board.height)
+    const c = content.current
+    const scale = Math.min((r.width - 90) / c.w, (r.height - 90) / c.h)
     useEditor.getState().setView(viewKey, {
       scale,
-      x: (r.width - board.width * scale) / 2,
-      y: (r.height - board.height * scale) / 2,
+      x: (r.width - c.w * scale) / 2 - c.x * scale,
+      y: (r.height - c.h * scale) / 2 - c.y * scale,
     })
   }, [ready, fitNonce, board, viewKey])
 
@@ -316,6 +323,7 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
             })}
           {layers.bodies && notes.map((p) => <PartBody key={p.part.id} {...p} board={board} />)}
           {layers.bodies && near.map((p) => <PartBody key={p.part.id} {...p} board={board} />)}
+          {layers.names && <NamesLayer names={names} board={board} mirrored={mirrored} />}
           {selectedPart && <SelectionOutline {...selectedPart} board={board} />}
           {selectedWire && tool === 'select' && <WireHandles points={selectedWire.points} board={board} />}
           {ghost && (

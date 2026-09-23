@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { PITCH } from '../../model/geometry'
 import type { PartDef, Props, Suggestion } from '../../model/types'
+import { NAME } from './labels'
 import { Upright } from './Upright'
 
 // DC-005 style 5.5 × 2.1 mm barrel jack seen from above, mouth towards the top.
@@ -11,6 +12,8 @@ export const barrelJack: PartDef = {
   category: 'Power',
   ref: 'J',
   pads: true,
+  defaults: { name: '' },
+  props: [NAME],
   pins: () => [[0, 0], [0, -2], [2, -1]],
   pinNames: () => [
     'Center pin · usually +',
@@ -88,8 +91,9 @@ export const fuseHolder: PartDef = {
   name: 'Fuse',
   category: 'Power',
   ref: 'F',
-  defaults: { type: '5×20 glass holder', rating: '2A' },
+  defaults: { type: '5×20 glass holder', rating: '2A', name: '' },
   props: [
+    NAME,
     { key: 'type', label: 'Type', type: 'select', options: Object.keys(FUSES) },
     { key: 'rating', label: 'Rating', type: 'text', suggestions: RATINGS },
   ],

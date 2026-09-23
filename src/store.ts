@@ -5,7 +5,7 @@ import type { Doc, Hole, PartInstance, Side } from './model/types'
 
 export type Tool = 'select' | 'wire' | 'pan'
 export type Selection = { kind: 'part' | 'wire'; id: string } | null
-export type Layer = 'bodies' | 'far' | 'wires'
+export type Layer = 'bodies' | 'far' | 'wires' | 'names'
 export type Layout = 'single' | 'split'
 export type ViewKey = 'single' | 'split'
 export type Menu = 'main' | 'files' | null
@@ -98,7 +98,7 @@ export const useEditor = create<EditorState>((set) => ({
   tool: 'select',
   placing: null,
   wireColor: WIRE_COLORS[0].value,
-  layers: { bodies: true, far: true, wires: true },
+  layers: { bodies: true, far: true, wires: true, names: false },
   views: { single: DEFAULT_VIEW, split: DEFAULT_VIEW },
   layout: 'single',
   facing: 'front',
