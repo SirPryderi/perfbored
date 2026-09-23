@@ -5,6 +5,7 @@ import {
   GitHubLogoIcon,
   HamburgerMenuIcon,
   HandIcon,
+  LightningBoltIcon,
   LoopIcon,
   Pencil1Icon,
   ResetIcon,
@@ -37,6 +38,7 @@ export const REPO = 'https://github.com/SirPryderi/perfbored'
 const TOOLS: { id: Tool; icon: React.ReactNode }[] = [
   { id: 'select', icon: <CursorArrowIcon /> },
   { id: 'wire', icon: <Pencil1Icon /> },
+  { id: 'probe', icon: <LightningBoltIcon /> },
   { id: 'pan', icon: <HandIcon /> },
 ]
 

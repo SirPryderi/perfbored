@@ -9,6 +9,7 @@ interface Props {
   far?: boolean
   selected?: boolean
   draft?: boolean
+  live?: boolean
 }
 
 export function WireHandles({ points, board }: { points: Hole[]; board: BoardDef }) {
@@ -22,10 +23,10 @@ export function WireHandles({ points, board }: { points: Hole[]; board: BoardDef
   )
 }
 
-export function WireView({ points, color, board, id, far, selected, draft }: Props) {
+export function WireView({ points, color, board, id, far, selected, draft, live }: Props) {
   const mm = points.map((p) => holeToMm(board, p))
   const d = mm.map(({ x, y }) => `${x},${y}`).join(' ')
-  const cls = ['wire', far && 'far', draft && 'draft'].filter(Boolean).join(' ')
+  const cls = ['wire', far && 'far', draft && 'draft', live && 'live'].filter(Boolean).join(' ')
   const ends = [mm[0], mm[mm.length - 1]]
   return (
     <g className={cls}>

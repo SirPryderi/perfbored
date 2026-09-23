@@ -37,6 +37,11 @@ const layer = (l: Layer) => () => s().toggleLayer(l)
 export const commands = {
   select: { label: 'Select', keys: [{ code: 'KeyA' }, { code: 'KeyV', alt: true }], run: () => s().setTool('select') },
   wire: { label: 'Wire', keys: [{ code: 'KeyS' }, { code: 'KeyW', alt: true }], run: () => s().setTool('wire') },
+  probe: {
+    label: 'Continuity: hover to see everything connected',
+    keys: [{ code: 'KeyG' }, { code: 'KeyB', alt: true }],
+    run: () => s().setTool('probe'),
+  },
   pan: { label: 'Pan (or hold Space)', keys: [{ code: 'KeyD' }, { code: 'KeyH', alt: true }], run: () => s().setTool('pan') },
   colour: { label: 'Wire colour (hold, flick, release)', keys: [{ code: 'KeyF' }, { code: 'KeyC' }, { code: 'KeyC', alt: true }] },
   parts: { label: 'Show parts', keys: [{ code: 'KeyQ' }], run: layer('bodies') },

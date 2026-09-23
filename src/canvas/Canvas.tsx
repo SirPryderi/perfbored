@@ -5,9 +5,10 @@ import { newId, updatePart, updateWire } from '../model/doc'
 import { centreOffset, holeKey, holeToMm, mmToHole, partPins } from '../model/geometry'
 import { editPinLabel, finishDraft } from '../actions'
 import { corner, moveVertex, naturalBend, simplify } from '../model/routing'
-import type { BoardDef, Hole, PartInstance, Side } from '../model/types'
+import type { BoardDef, Hole, PartInstance, Side, Wire } from '../model/types'
 import { useEditor, type Draft, type ViewKey } from '../store'
 import { useAnalysis } from '../useAnalysis'
+import type { Net } from '../analysis'
 import { coords } from '../model/naming'
 import { BoardView } from './BoardView'
 import { layoutNames, NamesLayer } from './NamesLayer'
@@ -197,7 +198,7 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
     svgRef.current!.setPointerCapture(e.pointerId)
     const hole = holeAt(e)
     const pan = () => (drag.current = { kind: 'pan', x: e.clientX, y: e.clientY, vx: view.x, vy: view.y })
-    if (e.button === 1 || space || tool === 'pan') return pan()
+    if (e.button === 1 || space || tool === 'pan' || tool === 'probe') return pan()
     if (e.button !== 0) return
     if (placing) return place(placing, hole, e.shiftKey)
     if (tool === 'wire') return addWirePoint(hole, e.shiftKey)
@@ -226,8 +227,9 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
     const s = useEditor.getState()
     const hole = holeAt(e)
     if (s.highlight) s.setHighlight(null)
-    if (!s.hover || s.hover.side !== facing || s.hover.hole[0] !== hole[0] || s.hover.hole[1] !== hole[1])
-      s.setHover({ hole, side: facing })
+    const wire = tool === 'probe' ? ((e.target as Element).closest('[data-wire]')?.getAttribute('data-wire') ?? undefined) : undefined
+    if (!s.hover || s.hover.side !== facing || s.hover.hole[0] !== hole[0] || s.hover.hole[1] !== hole[1] || s.hover.wire !== wire)
+      s.setHover({ hole, side: facing, wire })
     const d = drag.current
     if (d?.kind === 'pan') {
       s.setView(viewKey, { ...view, x: d.vx + e.clientX - d.x, y: d.vy + e.clientY - d.y })
@@ -276,6 +278,11 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
     return { def, part: { ...placing, side, col: here[0] - dc, row: here[1] - dr } }
   })()
   const hoverPins = useMemo(() => (here ? pinsAt(doc.parts, here) : []), [doc.parts, here])
+  // The probe follows the pointer in whichever view it is in, and lights the
+  // net up in both, so the split view shows it front and back at once.
+  const probed = tool === 'probe' && hover && !placing ? analysis.probe(hover.hole, hover.side, hover.wire) : undefined
+  const liveWires = new Set(probed?.wireIds)
+  const liveHoles = new Set(probed?.pins.map((p) => holeKey(p.hole)))
   const mode = placing ? 'place' : space || tool === 'pan' ? 'pan' : tool
   const cx = board.width / 2
   const world = `translate(${view.x} ${view.y}) scale(${view.scale}) translate(${cx} 0) scale(${squash} 1) translate(${-cx} 0)${mirrored ? ` translate(${board.width} 0) scale(-1 1)` : ''}`
@@ -284,7 +291,8 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
     const { x, y } = holeToMm(board, h)
     return { x: view.x + (mirrored ? board.width - x : x) * view.scale, y: view.y + y * view.scale }
   }
-  const tip = here && hoverPins.length && !placing && !pinEdit ? toScreen(here) : null
+  const tip = here && hoverPins.length && !placing && !pinEdit && !probed ? toScreen(here) : null
+  const probeTip = probed && here && hover?.side === facing ? toScreen(here) : null
   const editing = (() => {
     if (!pinEdit || pinEdit.side !== facing) return null
     const part = doc.parts.find((p) => p.id === pinEdit.partId)
@@ -297,7 +305,7 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
     <div className="canvas-wrap">
       <svg
         ref={svgRef}
-        className={`canvas mode-${mode}`}
+        className={`canvas mode-${mode}${probed ? ' probing' : ''}`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -308,22 +316,22 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
           <BoardView board={board} coords={coords(doc, board)} mirrored={mirrored} />
           {layers.far && layers.bodies && far.map((p) => <PartBody key={p.part.id} {...p} board={board} far />)}
           {layers.far && layers.wires &&
-            doc.wires.filter((w) => w.side !== shown).map((w) => <WireView key={w.id} {...w} board={board} far />)}
-          <PinsLayer items={placed} board={board} facing={shown} conflicts={conflicts} />
+            doc.wires.filter((w) => w.side !== shown).map((w) => <WireView key={w.id} {...w} board={board} far live={liveWires.has(w.id)} />)}
+          <PinsLayer items={placed} board={board} facing={shown} conflicts={conflicts} live={liveHoles} />
           {layers.wires &&
             doc.wires.filter((w) => w.side === shown).map((w) => (
-              <WireView key={w.id} {...w} board={board} selected={selection?.id === w.id} />
+              <WireView key={w.id} {...w} board={board} selected={selection?.id === w.id} live={liveWires.has(w.id)} />
             ))}
           {layers.wires &&
-            analysis.junctions.map(({ hole: h, side, color }) => {
+            analysis.junctions.map(({ hole: h, side, color, wire }) => {
               const { x, y } = holeToMm(board, h)
-              return (
-                <circle key={`${h}`} className={side === shown ? 'junction' : 'junction far'} cx={x} cy={y} r={0.52} style={{ fill: color }} />
-              )
+              const cls = ['junction', side !== shown && 'far', liveWires.has(wire) && 'live'].filter(Boolean).join(' ')
+              return <circle key={`${h}`} className={cls} cx={x} cy={y} r={0.52} style={{ fill: color }} />
             })}
           {layers.bodies && notes.map((p) => <PartBody key={p.part.id} {...p} board={board} />)}
           {layers.bodies && near.map((p) => <PartBody key={p.part.id} {...p} board={board} />)}
           {layers.names && <NamesLayer names={names} board={board} mirrored={mirrored} />}
+          {probed && <ProbeOverlay net={probed} wires={doc.wires} board={board} shown={shown} />}
           {selectedPart && <SelectionOutline {...selectedPart} board={board} />}
           {selectedWire && tool === 'select' && <WireHandles points={selectedWire.points} board={board} />}
           {ghost && (
@@ -349,6 +357,7 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
         </g>
       </svg>
       {tip && <PinTip x={tip.x} y={tip.y} pins={hoverPins} />}
+      {probed && probeTip && <ProbeTip x={probeTip.x} y={probeTip.y} net={probed} />}
       {pinEdit && editing && <PinLabelEditor key={`${pinEdit.partId}:${pinEdit.index}`} edit={pinEdit} x={editing.x} y={editing.y} />}
     </div>
   )
@@ -365,6 +374,55 @@ function PinTip({ x, y, pins }: { x: number; y: number; pins: ReturnType<typeof 
           <div className="pin-tip-part">{p.part} · {p.side}</div>
         </div>
       ))}
+    </div>
+  )
+}
+
+// The probed net drawn over everything, bodies included, so a connection
+// running under a module can still be followed.
+function ProbeOverlay({ net, wires, board, shown }: { net: Net; wires: Wire[]; board: BoardDef; shown: Side }) {
+  const ids = new Set(net.wireIds)
+  const holes = new Map(net.pins.map((p) => [holeKey(p.hole), p.hole]))
+  return (
+    <g className="probe">
+      {wires.filter((w) => ids.has(w.id)).map((w) => (
+        <polyline
+          key={w.id}
+          className={w.side === shown ? 'probe-wire' : 'probe-wire far'}
+          points={w.points.map((p) => holeToMm(board, p)).map(({ x, y }) => `${x},${y}`).join(' ')}
+        />
+      ))}
+      {[...holes].map(([k, h]) => {
+        const { x, y } = holeToMm(board, h)
+        return <circle key={k} className="probe-ring" cx={x} cy={y} r={1.25} />
+      })}
+    </g>
+  )
+}
+
+const TIP_ROWS = 10
+
+// What the probe reaches, listed the way the report names pins.
+function ProbeTip({ x, y, net }: { x: number; y: number; net: Net }) {
+  const pins = [...new Map(net.pins.map((p) => [`${p.ref}.${p.name}`, p])).values()]
+  const parts = new Set(pins.map((p) => p.partId)).size
+  const title =
+    parts <= 1 && !net.wires.length
+      ? 'Not connected to anything'
+      : pins.length
+        ? `${pins.length} ${pins.length === 1 ? 'pin' : 'pins'} connected`
+        : 'No pins on this wire'
+  return (
+    <div className="pin-tip probe-tip" style={{ left: x, top: y }}>
+      <div className="pin-tip-name">{title}</div>
+      {pins.slice(0, TIP_ROWS).map((p) => (
+        <div key={`${p.ref}.${p.name}`} className="probe-pin">
+          <span className="probe-ref">{p.ref}.{p.name}</span>
+          {p.detail && <span className="pin-tip-detail">{p.detail}</span>}
+        </div>
+      ))}
+      {pins.length > TIP_ROWS && <div className="pin-tip-part">and {pins.length - TIP_ROWS} more</div>}
+      {net.wires.length > 0 && <div className="pin-tip-part">via {net.wires.join(', ')}</div>}
     </div>
   )
 }

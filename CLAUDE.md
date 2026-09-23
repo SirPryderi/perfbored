@@ -30,11 +30,10 @@ Deployment is GitHub Pages via `.github/workflows/deploy.yml` on push to `main`.
 
 ## Connectivity lives in `analysis.ts`
 
-`analyze(doc)` is the single source of truth for what is connected, and both the in-editor Checks panel and the text report render it. Adding a rule to one without the other is a bug. The rules model hand soldering, not PCB traces:
+`analyze(doc)` is the single source of truth for what is connected, and the Checks panel, the continuity probe (`probe`) and the text report all render it. Adding a rule to one without the other is a bug. The rules model hand soldering, not PCB traces:
 
-- a wire is one conductor along its whole path;
-- a wire connects to any pin whose hole it passes through (soldering across a pin is normal practice);
-- a wire ending anywhere on another wire is a junction; wires that merely cross are insulated;
+- a wire is one insulated conductor that connects only at its two ends; bends and holes it runs through connect to nothing, so every junction is explicit;
+- a wire end connects to the pin in its hole, or where there is no pin, to any wire running through that hole (a junction); running over a pin is a note, not a connection;
 - pins in the same hole are connected, and same-named pins on one part are joined inside it (two GNDs, a button's paired legs);
 - `stacks` parts (pin headers) sharing holes with a module are sockets, not shorts.
 

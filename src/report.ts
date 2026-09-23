@@ -25,7 +25,7 @@ export function describe(doc: Doc): string {
       : 'Holes are C<col>R<row>, 1-based'
   out(`Board: ${board.name}, ${board.cols} columns × ${board.rows} rows. ${scheme}, counted from the ${c.origin} corner as seen from the FRONT.`)
   out('Parts on the back, or mounted upside down, are listed with the holes their legs go through (front coordinates).')
-  out('Connections: a wire connects its ends, any pin whose hole it runs through, and any wire that ends on it. Wires that merely cross are insulated.')
+  out('Connections: wires are insulated and connect only at their two ends. An end connects to the pin in its hole, or, with no pin there, to any wire running through that hole (a junction). Wires that cross, bend, or run over a pin without ending there are not connected.')
   out("Pins in the same hole are connected, as are same-named pins on one part (two GND pins, a button's paired legs). Pin headers under modules are sockets, not shorts.")
   out()
 

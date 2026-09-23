@@ -31,18 +31,19 @@ interface PinsProps {
   board: BoardDef
   facing: Side
   conflicts?: Set<string>
+  live?: Set<string>
   ghost?: boolean
 }
 
 // Every through-hole pin shows on both sides: as a ring where the part sits,
 // and as a solder joint where its leg pokes out the other side.
-export function PinsLayer({ items, board, facing, conflicts, ghost }: PinsProps) {
+export function PinsLayer({ items, board, facing, conflicts, live, ghost }: PinsProps) {
   return (
     <g className={ghost ? 'pins ghost' : 'pins'}>
       {items.flatMap(({ part, def }) =>
         partPins(part, def).map(([c, r]) => {
           const { x, y } = holeToMm(board, [c, r])
-          const cls = ['pin', part.side === facing ? 'near' : 'far', conflicts?.has(`${c},${r}`) && 'conflict']
+          const cls = ['pin', part.side === facing ? 'near' : 'far', conflicts?.has(`${c},${r}`) && 'conflict', live?.has(`${c},${r}`) && 'live']
           return (
             <circle
               key={`${part.id}:${c},${r}`}

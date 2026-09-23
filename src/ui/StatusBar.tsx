@@ -9,6 +9,7 @@ function hint(s: { placing: boolean; tool: string; drafting: boolean }) {
   if (s.tool === 'wire' && s.drafting)
     return 'Click to bend · click the last hole again or Enter to finish · / flips the corner · Shift for a straight run · Esc cancels'
   if (s.tool === 'wire') return 'Click a hole to start a wire on this side'
+  if (s.tool === 'probe') return 'Hover a pin or wire to light up everything connected to it · wires join only at their ends · drag to pan'
   if (s.tool === 'pan') return 'Drag to pan · ⌘ + scroll to zoom · 0 fits the board'
   return 'Drag parts to move · R rotates · T moves a part to the other side · 3 flips the board · hold F for wire colours'
 }

@@ -3,7 +3,7 @@ import { initialFile, listFiles, saveFile, type FileMeta } from './files'
 import { WIRE_COLORS } from './model/routing'
 import type { Doc, Hole, PartInstance, Side } from './model/types'
 
-export type Tool = 'select' | 'wire' | 'pan'
+export type Tool = 'select' | 'wire' | 'probe' | 'pan'
 export type Selection = { kind: 'part' | 'wire'; id: string } | null
 export type Layer = 'bodies' | 'far' | 'wires' | 'names'
 export type Layout = 'single' | 'split'
@@ -26,6 +26,7 @@ export interface PinEdit {
 export interface Hover {
   hole: Hole
   side: Side
+  wire?: string // the wire under the pointer, if any
 }
 
 export interface View {

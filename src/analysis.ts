@@ -4,11 +4,12 @@ import { coords } from './model/naming'
 import type { Doc, Hole, PartDef, PartInstance, Side, Wire } from './model/types'
 
 // Electrical and physical analysis of a board. Connectivity rules:
-// - a wire is one conductor along its whole path;
+// - a wire is one conductor along its whole path, insulated except at its two
+//   ends: bends and holes it runs through connect to nothing;
 // - pins in the same hole are connected, as are same-named pins on one part;
-// - a wire connects to any pin whose hole it passes through (solder across);
-// - a wire END landing anywhere on another wire makes a junction;
-// - wires that merely cross are insulated from each other.
+// - a wire end connects to the pin in its hole, or, where there is no pin, to
+//   any wire running through that hole: that is a junction;
+// - wires that merely cross, or run over a pin, are insulated from it.
 
 export interface Pin {
   partId: string
@@ -20,7 +21,8 @@ export interface Pin {
 
 export interface Net {
   pins: Pin[]
-  wires: string[]
+  wires: string[] // wire refs, W1…
+  wireIds: string[]
 }
 
 export interface Check {
@@ -34,8 +36,10 @@ export interface Analysis {
   wireRefs: Map<string, string>
   nets: Net[]
   loose: Map<string, string[]>
-  junctions: { hole: Hole; side: Side; color: string }[]
+  junctions: { hole: Hole; side: Side; color: string; wire: string }[]
   checks: Check[]
+  // What a continuity probe touching this hole, or this wire, would reach.
+  probe: (hole: Hole, side: Side, wire?: string) => Net | undefined
 }
 
 // Every hole a wire runs through, including its ends and bends.
@@ -138,14 +142,13 @@ export function analyze(doc: Doc): Analysis {
       const k = holeKey(h)
       passing.set(k, (passing.get(k) ?? new Set()).add(w.id))
       const isEnd = k === first || k === last
-      const others = (ends.get(k) ?? []).filter((id) => id !== w.id)
-      if (isEnd || pinsAt.has(k) || others.length) groups.join(`w:${w.id}`, hole(h))
-      if (!isEnd && others.length && !pinsAt.has(k))
-        junctions.push({ hole: h, side: w.side, color: doc.wires.find((o) => o.id === others[0])!.color })
+      const landing = isEnd || pinsAt.has(k) ? [] : (ends.get(k) ?? []).filter((id) => id !== w.id)
+      if (isEnd || landing.length) groups.join(`w:${w.id}`, hole(h))
+      if (landing.length) junctions.push({ hole: h, side: w.side, color: doc.wires.find((o) => o.id === landing[0])!.color, wire: w.id })
       if (!isEnd && pinsAt.has(k))
         checks.push({
           level: 'note',
-          message: `${wireRefs.get(w.id)} runs through ${pinsAt.get(k)!.map((p) => `${p.ref}.${p.name}`).join(', ')} at ${at(h)}, treated as soldered`,
+          message: `${wireRefs.get(w.id)} runs over ${pinsAt.get(k)!.map((p) => `${p.ref}.${p.name}`).join(', ')} at ${at(h)} without connecting; keep it insulated there`,
           holes: [h],
         })
     }
@@ -154,11 +157,26 @@ export function analyze(doc: Doc): Analysis {
   const netsByRoot = new Map<string, Net>()
   const net = (key: string) => {
     const root = groups.find(key)
-    if (!netsByRoot.has(root)) netsByRoot.set(root, { pins: [], wires: [] })
+    if (!netsByRoot.has(root)) netsByRoot.set(root, { pins: [], wires: [], wireIds: [] })
     return netsByRoot.get(root)!
   }
   for (const p of pins) net(hole(p.hole)).pins.push(p)
-  for (const w of doc.wires) net(`w:${w.id}`).wires.push(wireRefs.get(w.id)!)
+  for (const w of doc.wires) {
+    net(`w:${w.id}`).wires.push(wireRefs.get(w.id)!)
+    net(`w:${w.id}`).wireIds.push(w.id)
+  }
+
+  // A pin decides its hole; otherwise a wire end or junction there does, and
+  // failing that the topmost wire running through it, the side being looked
+  // at first.
+  const probe = (h: Hole, side: Side, wire?: string) => {
+    const k = holeKey(h)
+    if (pinsAt.has(k) || ends.has(k)) return net(hole(h))
+    const through = doc.wires.filter((w) => passing.get(k)?.has(w.id))
+    const top = through.filter((w) => w.side === side).pop() ?? through.pop()
+    const id = wire ?? top?.id
+    return id ? net(`w:${id}`) : undefined
+  }
 
   const connected = (n: Net) => n.wires.length > 0 || new Set(n.pins.map((p) => p.partId)).size > 1
   const nets = [...netsByRoot.values()].filter(connected)
@@ -221,5 +239,5 @@ export function analyze(doc: Doc): Analysis {
     }
 
   checks.sort((x, y) => (x.level === y.level ? 0 : x.level === 'fault' ? -1 : 1))
-  return { refs, wireRefs, nets, loose, junctions, checks }
+  return { refs, wireRefs, nets, loose, junctions, checks, probe }
 }

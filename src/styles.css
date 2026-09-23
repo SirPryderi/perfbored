@@ -284,6 +284,8 @@ kbd {
 .canvas.mode-wire .part, .canvas.mode-place .part, .canvas.mode-pan .part,
 .canvas.mode-wire .wire-hit, .canvas.mode-place .wire-hit, .canvas.mode-pan .wire-hit,
 .canvas.mode-wire .pin, .canvas.mode-place .pin { pointer-events: none; }
+.canvas.mode-probe { cursor: crosshair; }
+.canvas.mode-probe .part, .canvas.mode-probe .pin, .canvas.mode-probe .wire-handle { pointer-events: none; }
 
 /* board drawing */
 .board { fill: var(--board); stroke: var(--line-strong); stroke-width: 0.3; }
@@ -378,6 +380,17 @@ kbd {
 .pin-tip-name { font-weight: 600; font-size: 12.5px; }
 .pin-tip-detail { font-size: 11px; color: var(--ink-2); margin-top: 1px; }
 .pin-tip-part { font-size: 10.5px; color: var(--ink-3); margin-top: 1px; }
+/* continuity probe: the net under the pointer, everything else faded */
+.canvas.probing .part { opacity: 0.4; }
+.canvas.probing .wire:not(.live), .canvas.probing .junction:not(.live) { opacity: 0.12; }
+.canvas.probing .pin:not(.live) { opacity: 0.3; }
+.probe { pointer-events: none; }
+.probe-wire { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; opacity: 0.5; }
+.probe-wire.far { stroke-dasharray: 1.4 0.9; opacity: 0.35; }
+.probe-ring { fill: none; stroke: var(--accent); stroke-width: 0.4; }
+.probe-tip { gap: 3px; }
+.probe-pin { display: flex; gap: 8px; align-items: baseline; }
+.probe-ref { font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .pin-name { color: var(--ink); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
 
 /* radial colour picker */
