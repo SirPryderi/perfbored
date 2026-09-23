@@ -1,61 +1,80 @@
 import { docBoard, partById } from './library'
-import { emptyDoc, newId, parseDoc, removeById, updatePart } from './model/doc'
-import { isMirrored, partPins, propsOf } from './model/geometry'
+import { about, centreOf, copies, mirrorShift, move, otherSide, pick, remove, turn, type Items } from './items'
+import { emptyDoc, newId, parseDoc, updatePart } from './model/doc'
+import { partPins, propsOf } from './model/geometry'
 import type { Naming, Origin } from './model/naming'
 import { simplify } from './model/routing'
 import { listFiles, loadFile, removeFile, saveFile } from './files'
-import type { Doc, Hole, PartDef, PartInstance, Rotation } from './model/types'
+import type { Doc, Hole, Rotation } from './model/types'
 import { describe } from './report'
-import { useEditor } from './store'
+import { only, useEditor, type Item } from './store'
 
 const state = () => useEditor.getState()
 
+const selectedIds = () => new Set(state().selection.map((i) => i.id))
+
 const selectedPart = () => {
-  const s = state()
-  return s.selection?.kind === 'part' ? s.doc.parts.find((p) => p.id === s.selection!.id) : undefined
+  const id = only(state().selection, 'part')
+  return id ? state().doc.parts.find((p) => p.id === id) : undefined
 }
 
+const asSelection = (items: Items): Item[] => [
+  ...items.parts.map((p) => ({ kind: 'part' as const, id: p.id })),
+  ...items.wires.map((w) => ({ kind: 'wire' as const, id: w.id })),
+]
+
+// One part turns about its first pin, as it always has; anything more turns
+// as a group about its middle, so wires stay on the legs they end on.
 export function rotate(delta: 90 | -90) {
   const s = state()
-  const turn = (rot: Rotation) => (((rot + delta + 360) % 360) as Rotation)
-  if (s.placing) return s.setPlacing({ ...s.placing, rot: turn(s.placing.rot) })
+  const spin = (rot: Rotation) => (((rot + delta + 360) % 360) as Rotation)
+  if (s.placing) return s.setPlacing({ ...s.placing, rot: spin(s.placing.rot) })
   const part = selectedPart()
-  if (part) s.change((d) => updatePart(d, part.id, { rot: turn(part.rot) }))
-}
-
-// Moving a part through the board, or turning it upside down, mirrors it;
-// shift it so its legs stay in the same holes.
-function mirrorInPlace(part: PartInstance, def: PartDef, patch: Partial<PartInstance>) {
-  const cols = partPins(part, def).map(([c]) => c)
-  const shift = cols.length ? Math.min(...cols) + Math.max(...cols) - 2 * part.col : 0
-  state().change((d) => updatePart(d, part.id, { ...patch, col: part.col + shift }))
+  if (part) return s.change((d) => updatePart(d, part.id, { rot: spin(part.rot) }))
+  const ids = selectedIds()
+  if (ids.size) s.change((d) => turn(d, ids, delta, about(centreOf(pick(d, ids)), delta)))
 }
 
 export function flipSide() {
-  const part = selectedPart()
-  const def = part && partById(part.def)
-  if (!part || !def || def.annotation) return
-  mirrorInPlace(part, def, { side: part.side === 'front' ? 'back' : 'front' })
+  const ids = selectedIds()
+  if (ids.size) state().change((d) => otherSide(d, ids))
 }
 
+// Turning a module upside down mirrors it; it shifts so its legs stay put.
 export function upsideDown() {
-  const part = selectedPart()
-  const def = part && partById(part.def)
-  if (!part || !def?.flippable) return
-  mirrorInPlace(part, def, { flipped: !part.flipped })
+  const s = state()
+  const flippable = pick(s.doc, selectedIds()).parts.filter((p) => partById(p.def)?.flippable)
+  if (!flippable.length) return
+  const ids = new Set(flippable.map((p) => p.id))
+  s.change((d) => ({
+    ...d,
+    parts: d.parts.map((p) => (ids.has(p.id) ? { ...p, flipped: !p.flipped, col: p.col + mirrorShift(p) } : p)),
+  }))
 }
 
+// Selected parts keep their order among themselves.
 function reorder(toFront: boolean) {
-  const part = selectedPart()
-  if (!part) return
+  const ids = selectedIds()
+  if (!state().doc.parts.some((p) => ids.has(p.id))) return
   state().change((d) => {
-    const rest = d.parts.filter((p) => p.id !== part.id)
-    return { ...d, parts: toFront ? [...rest, part] : [part, ...rest] }
+    const chosen = d.parts.filter((p) => ids.has(p.id))
+    const rest = d.parts.filter((p) => !ids.has(p.id))
+    return { ...d, parts: toFront ? [...rest, ...chosen] : [...chosen, ...rest] }
   })
 }
 
 export const bringToFront = () => reorder(true)
 export const sendToBack = () => reorder(false)
+
+export function selectAll() {
+  const { doc } = state()
+  state().select(asSelection(doc))
+}
+
+export function nudge(dc: number, dr: number) {
+  const ids = selectedIds()
+  if (ids.size) state().change((d) => move(d, ids, dc, dr))
+}
 
 // The first pin at a hole whose label can be edited.
 export function labellablePinAt(hole: Hole) {
@@ -83,18 +102,48 @@ export function setPinLabel(partId: string, index: number, label: string) {
 
 export function deleteSelection() {
   const s = state()
-  if (!s.selection) return
-  const id = s.selection.id
-  s.change((d) => removeById(d, id))
-  s.select(null)
+  const ids = selectedIds()
+  if (!ids.size) return
+  s.change((d) => remove(d, ids))
+  s.select([])
+}
+
+function add(items: Items) {
+  const s = state()
+  s.change((d) => ({ ...d, parts: [...d.parts, ...items.parts], wires: [...d.wires, ...items.wires] }))
+  s.select(asSelection(items))
 }
 
 export function duplicate() {
-  const part = selectedPart()
-  if (!part) return
-  const copy = { ...part, id: newId(), col: part.col + 1, row: part.row + 1 }
-  state().change((d) => ({ ...d, parts: [...d.parts, copy] }))
-  state().select({ kind: 'part', id: copy.id })
+  const items = pick(state().doc, selectedIds())
+  if (items.parts.length || items.wires.length) add(copies(items, 1, 1))
+}
+
+// Copied items live here rather than on the system clipboard, so ⌘C still
+// copies text anywhere else on the page. They survive switching boards.
+let clipboard: Items | null = null
+
+// Returns false when there is nothing selected, leaving the key to the page.
+export function copy() {
+  const items = pick(state().doc, selectedIds())
+  if (!items.parts.length && !items.wires.length) return false
+  clipboard = items
+  const n = items.parts.length + items.wires.length
+  state().notify(`Copied ${n} ${n === 1 ? 'item' : 'items'} — ⌘V pastes them under the pointer`)
+}
+
+export function cut() {
+  if (copy() === false) return false
+  deleteSelection()
+}
+
+// Pastes centred on the hole under the pointer, or next to the originals.
+export function paste() {
+  if (!clipboard) return false
+  const hover = state().hover?.hole
+  const [cc, cr] = centreOf(clipboard)
+  const [dc, dr] = hover ? [hover[0] - cc, hover[1] - cr] : [2, 2]
+  add(copies(clipboard, dc, dr))
 }
 
 export function finishDraft() {
@@ -143,23 +192,16 @@ export function deleteFile(id: string) {
 }
 
 // Turning the board leaves every part where it physically is: holes rotate
-// with the board, and a mirrored part turns the other way, since its mirror is
-// applied after its own rotation.
+// with the board, and so does everything on it.
 export function rotateBoard(delta: 90 | -90 | 180) {
   const s = state()
   const { cols, rows } = docBoard(s.doc)
   const map = ([c, r]: Hole): Hole =>
     delta === 90 ? [rows - 1 - r, c] : delta === -90 ? [r, cols - 1 - c] : [cols - 1 - c, rows - 1 - r]
-  s.change((d) => ({
-    ...d,
-    portrait: delta === 180 ? d.portrait : !d.portrait,
-    parts: d.parts.map((p) => {
-      const [col, row] = map([p.col, p.row])
-      const spin = isMirrored(p) ? -delta : delta
-      return { ...p, col, row, rot: (((p.rot + spin + 360) % 360) as Rotation) }
-    }),
-    wires: d.wires.map((w) => ({ ...w, points: w.points.map(map) })),
-  }))
+  s.change((d) => {
+    const all = new Set([...d.parts, ...d.wires].map((i) => i.id))
+    return { ...turn(d, all, delta, map), portrait: delta === 180 ? d.portrait : !d.portrait }
+  })
   s.requestFit()
 }
 

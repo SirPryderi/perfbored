@@ -4,7 +4,10 @@ import { WIRE_COLORS } from './model/routing'
 import type { Doc, Hole, PartInstance, Side } from './model/types'
 
 export type Tool = 'select' | 'wire' | 'probe' | 'pan'
-export type Selection = { kind: 'part' | 'wire'; id: string } | null
+export interface Item {
+  kind: 'part' | 'wire'
+  id: string
+}
 export type Layer = 'bodies' | 'far' | 'wires' | 'names'
 export type Layout = 'single' | 'split'
 export type ViewKey = 'single' | 'split'
@@ -45,7 +48,7 @@ interface EditorState {
   doc: Doc
   past: Doc[]
   future: Doc[]
-  selection: Selection
+  selection: Item[]
   tool: Tool
   placing: PartInstance | null
   wireColor: string
@@ -67,7 +70,7 @@ interface EditorState {
   setPanel: (panel: Panel) => void
   setPinEdit: (edit: PinEdit | null) => void
   notify: (notice: string) => void
-  select: (selection: Selection) => void
+  select: (selection: Item[]) => void
   setTool: (tool: Tool) => void
   setPlacing: (part: PartInstance | null) => void
   setWireColor: (color: string) => void
@@ -95,7 +98,7 @@ export const useEditor = create<EditorState>((set) => ({
   doc: first.doc,
   past: [],
   future: [],
-  selection: null,
+  selection: [],
   tool: 'select',
   placing: null,
   wireColor: WIRE_COLORS[0].value,
@@ -113,17 +116,17 @@ export const useEditor = create<EditorState>((set) => ({
   checkpoint: () => set((s) => ({ past: [...s.past, s.doc].slice(-HISTORY), future: [] })),
   undo: () =>
     set((s) =>
-      s.past.length ? { doc: s.past[s.past.length - 1], past: s.past.slice(0, -1), future: [s.doc, ...s.future], selection: null } : s,
+      s.past.length ? { doc: s.past[s.past.length - 1], past: s.past.slice(0, -1), future: [s.doc, ...s.future], selection: [] } : s,
     ),
   redo: () =>
-    set((s) => (s.future.length ? { doc: s.future[0], future: s.future.slice(1), past: [...s.past, s.doc], selection: null } : s)),
+    set((s) => (s.future.length ? { doc: s.future[0], future: s.future.slice(1), past: [...s.past, s.doc], selection: [] } : s)),
   open: (fileId, doc) =>
     set((s) => ({
       fileId,
       doc,
       past: [],
       future: [],
-      selection: null,
+      selection: [],
       placing: null,
       draft: null,
       highlight: null,
@@ -138,9 +141,9 @@ export const useEditor = create<EditorState>((set) => ({
   },
   // Selecting jumps to the properties, unless the part list is open: there the
   // list is what you are working in, and it shows the selection itself.
-  select: (selection) => set((s) => ({ selection, panel: selection && s.panel !== 'parts' ? 'properties' : s.panel })),
+  select: (selection) => set((s) => ({ selection, panel: selection.length && s.panel !== 'parts' ? 'properties' : s.panel })),
   setTool: (tool) => set({ tool, placing: null, draft: null }),
-  setPlacing: (placing) => set({ placing, tool: 'select', selection: null }),
+  setPlacing: (placing) => set({ placing, tool: 'select', selection: [] }),
   setWireColor: (wireColor) => set({ wireColor }),
   toggleLayer: (layer) => set((s) => ({ layers: { ...s.layers, [layer]: !s.layers[layer] } })),
   setView: (key, view) => set((s) => ({ views: { ...s.views, [key]: view } })),
@@ -151,6 +154,12 @@ export const useEditor = create<EditorState>((set) => ({
   setDraft: (draft) => set({ draft }),
   requestFit: () => set((s) => ({ fitNonce: s.fitNonce + 1 })),
 }))
+
+export const isSelected = (selection: Item[], id: string) => selection.some((i) => i.id === id)
+
+// The one thing selected, when it is exactly one thing of that kind.
+export const only = (selection: Item[], kind: Item['kind']) =>
+  selection.length === 1 && selection[0].kind === kind ? selection[0].id : undefined
 
 useEditor.subscribe((s, prev) => {
   if (s.doc === prev.doc && s.fileId === prev.fileId) return

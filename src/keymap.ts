@@ -1,15 +1,20 @@
 import {
   bringToFront,
   copyForReview,
+  copy,
   copyJson,
+  cut,
   deleteSelection,
   duplicate,
   editPinLabel,
   exportJson,
   flipSide,
   newBoard,
+  nudge,
+  paste,
   rotate,
   rotateBoard,
+  selectAll,
   sendToBack,
   upsideDown,
 } from './actions'
@@ -28,10 +33,12 @@ export interface Key {
 export interface Command {
   label: string
   keys: Key[]
-  run?: (e: KeyboardEvent) => void
+  // Returning false leaves the key to the browser, e.g. ⌘C with nothing selected.
+  run?: (e: KeyboardEvent) => unknown
 }
 
 const s = () => useEditor.getState()
+const NUDGE: Record<string, [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }
 const layer = (l: Layer) => () => s().toggleLayer(l)
 
 export const commands = {
@@ -49,6 +56,11 @@ export const commands = {
   far: { label: 'Show the other side', keys: [{ code: 'KeyE' }], run: layer('far') },
   names: { label: 'Show connector names', keys: [{ code: 'KeyN' }], run: layer('names') },
   labelPin: { label: 'Label the pin under the cursor (or double-click it)', keys: [{ code: 'KeyL' }], run: () => editPinLabel() },
+  nudge: {
+    label: 'Move the selection one hole',
+    keys: [{ code: 'ArrowUp' }, { code: 'ArrowDown' }, { code: 'ArrowLeft' }, { code: 'ArrowRight' }],
+    run: (e) => nudge(...NUDGE[e.code]),
+  },
   rotate: { label: 'Rotate (⇧ for the other way)', keys: [{ code: 'KeyR', anyShift: true }], run: (e) => rotate(e.shiftKey ? -90 : 90) },
   rotateBoard: {
     label: 'Turn the whole board (⇧ for the other way)',
@@ -69,6 +81,10 @@ export const commands = {
   keys: { label: 'Keyboard shortcuts panel', keys: [{ code: 'Digit4', alt: true }], run: () => s().setPanel('keys') },
   undo: { label: 'Undo', keys: [{ code: 'KeyZ', mod: true }], run: () => s().undo() },
   redo: { label: 'Redo', keys: [{ code: 'KeyZ', mod: true, shift: true }, { code: 'KeyY', mod: true }], run: () => s().redo() },
+  selectAll: { label: 'Select everything', keys: [{ code: 'KeyA', mod: true }], run: selectAll },
+  copy: { label: 'Copy', keys: [{ code: 'KeyC', mod: true }], run: copy },
+  cut: { label: 'Cut', keys: [{ code: 'KeyX', mod: true }], run: cut },
+  paste: { label: 'Paste under the pointer', keys: [{ code: 'KeyV', mod: true }], run: paste },
   duplicate: { label: 'Duplicate', keys: [{ code: 'KeyD', mod: true }], run: duplicate },
   delete: { label: 'Delete', keys: [{ code: 'Backspace' }, { code: 'Delete' }], run: deleteSelection },
   files: { label: 'Switch board', keys: [{ code: 'KeyP', mod: true }], run: () => s().setMenu('files') },
@@ -97,6 +113,10 @@ const NAMES: Record<string, string> = {
   Space: 'Space',
   BracketLeft: '[',
   BracketRight: ']',
+  ArrowUp: '↑',
+  ArrowDown: '↓',
+  ArrowLeft: '←',
+  ArrowRight: '→',
 }
 
 export function keyLabel(key: Key) {

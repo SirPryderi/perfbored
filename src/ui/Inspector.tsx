@@ -18,7 +18,7 @@ import { updatePart, updateWire } from '../model/doc'
 import { PITCH, propsOf } from '../model/geometry'
 import { coords, namingOf, originLabel, originOf, ORIGINS, type Naming, type Origin } from '../model/naming'
 import type { PartInstance, PropSpec, PropValue, Side, Unit, Wire } from '../model/types'
-import { useEditor, type Panel } from '../store'
+import { only, useEditor, type Item, type Panel } from '../store'
 import { useAnalysis } from '../useAnalysis'
 import { commands, type CommandId } from '../keymap'
 import { Checks } from './Checks'
@@ -215,6 +215,43 @@ function WirePanel({ wire }: { wire: Wire }) {
   )
 }
 
+const count = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`
+
+// Several things at once: what can be done to all of them together.
+function SelectionPanel({ items }: { items: Item[] }) {
+  const parts = items.filter((i) => i.kind === 'part').length
+  const wires = items.length - parts
+  return (
+    <>
+      <h2>{[parts && count(parts, 'part'), wires && count(wires, 'wire')].filter(Boolean).join(' and ')}</h2>
+      <div className="fields">
+        <div className="row">
+          <label>Rotation</label>
+          <div className="inline">
+            <button className="icon-button" onClick={() => rotate(-90)} aria-label="Rotate left"><ResetIcon /></button>
+            <button className="icon-button mirror" onClick={() => rotate(90)} aria-label="Rotate right"><ResetIcon /></button>
+            <span className="meta">as a group</span>
+          </div>
+        </div>
+        <div className="row">
+          <label>Side</label>
+          <Tip command="otherSide">
+            <button className="button" onClick={flipSide}>Swap sides</button>
+          </Tip>
+        </div>
+        <div className="row">
+          <label>Move</label>
+          <span className="meta">drag, or arrow keys</span>
+        </div>
+      </div>
+      <div className="actions">
+        <button className="button" onClick={duplicate}><CopyIcon /> Duplicate</button>
+        <button className="button danger" onClick={deleteSelection}><TrashIcon /> Delete</button>
+      </div>
+    </>
+  )
+}
+
 function BoardPanel() {
   const { doc } = useEditor(useShallow((s) => ({ doc: s.doc })))
   const board = docBoard(doc)
@@ -289,8 +326,8 @@ function Shortcuts() {
 export function Inspector() {
   const { selection, doc, panel } = useEditor(useShallow((s) => ({ selection: s.selection, doc: s.doc, panel: s.panel })))
   const faults = useAnalysis().checks.filter((c) => c.level === 'fault').length
-  const part = selection?.kind === 'part' ? doc.parts.find((p) => p.id === selection.id) : undefined
-  const wire = selection?.kind === 'wire' ? doc.wires.find((w) => w.id === selection.id) : undefined
+  const part = doc.parts.find((p) => p.id === only(selection, 'part'))
+  const wire = doc.wires.find((w) => w.id === only(selection, 'wire'))
   return (
     <Tabs.Root className="inspector" value={panel} onValueChange={(v) => e().setPanel(v as Panel)}>
       <Tabs.List className="tabs" aria-label="Panels">
@@ -302,7 +339,15 @@ export function Inspector() {
         <Tabs.Trigger value="keys" className="tab">Keys</Tabs.Trigger>
       </Tabs.List>
       <Tabs.Content value="properties" className="tab-body">
-        {part ? <PartPanel part={part} /> : wire ? <WirePanel wire={wire} /> : <BoardPanel />}
+        {part ? (
+          <PartPanel part={part} />
+        ) : wire ? (
+          <WirePanel wire={wire} />
+        ) : selection.length > 1 ? (
+          <SelectionPanel items={selection} />
+        ) : (
+          <BoardPanel />
+        )}
       </Tabs.Content>
       <Tabs.Content value="parts" className="tab-body">
         <Parts />

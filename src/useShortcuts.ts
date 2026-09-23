@@ -25,15 +25,13 @@ export function useShortcuts() {
       }
       if (e.code === 'Escape') {
         s.setPlacing(null)
-        s.select(null)
+        s.select([])
         return
       }
       const command = Object.values(commands as Record<string, Command>).find(
         (c) => c.run && c.keys.some((k) => matches(k, e)),
       )
-      if (!command) return
-      e.preventDefault()
-      command.run!(e)
+      if (command && command.run!(e) !== false) e.preventDefault()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

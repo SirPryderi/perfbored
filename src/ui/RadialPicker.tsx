@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { partById } from '../library'
-import { updatePart, updateWire } from '../model/doc'
+import { propsOf } from '../model/geometry'
+import type { PartInstance } from '../model/types'
 import { WIRE_COLORS } from '../model/routing'
-import { useEditor } from '../store'
+import { isSelected, useEditor } from '../store'
 import { commands, matches } from '../keymap'
 import { typing } from '../useShortcuts'
 
@@ -11,22 +12,34 @@ const DEAD_ZONE = 28
 const STEP = (2 * Math.PI) / WIRE_COLORS.length
 const angleOf = (i: number) => i * STEP - Math.PI / 2
 
-// The colour prop of the selected part, if it has one.
-function colourProp() {
-  const s = useEditor.getState()
-  const part = s.selection?.kind === 'part' ? s.doc.parts.find((p) => p.id === s.selection!.id) : undefined
-  const def = part && partById(part.def)
-  const key = def?.props?.find((spec) => spec.type === 'color')?.key
-  return part && def && key ? { part, key, value: String(part.props[key] ?? def.defaults?.[key]) } : null
+const colourKey = (part: PartInstance) => partById(part.def)?.props?.find((spec) => spec.type === 'color')?.key
+
+// What a colour applies to: the selected wires, and selected parts that have a
+// colour of their own, such as a header's plastic.
+function coloured(s = useEditor.getState()) {
+  const wires = s.doc.wires.filter((w) => isSelected(s.selection, w.id))
+  const parts = s.doc.parts.filter((p) => isSelected(s.selection, p.id) && colourKey(p))
+  return { wires, parts }
+}
+
+function currentColour(s = useEditor.getState()) {
+  const { wires, parts } = coloured(s)
+  if (wires.length) return wires[0].color
+  const part = parts[0]
+  return part ? String(propsOf(part, partById(part.def)!)[colourKey(part)!]) : s.wireColor
 }
 
 function pick(color: string) {
   const s = useEditor.getState()
-  const wire = s.selection?.kind === 'wire' ? s.selection.id : null
-  const prop = colourProp()
-  if (wire) s.change((d) => updateWire(d, wire, { color }))
-  else if (prop) s.change((d) => updatePart(d, prop.part.id, { props: { ...prop.part.props, [prop.key]: color } }))
-  if (!prop) s.setWireColor(color)
+  const { wires, parts } = coloured(s)
+  const ids = new Set([...wires, ...parts].map((i) => i.id))
+  if (ids.size)
+    s.change((d) => ({
+      ...d,
+      wires: d.wires.map((w) => (ids.has(w.id) ? { ...w, color } : w)),
+      parts: d.parts.map((p) => (ids.has(p.id) ? { ...p, props: { ...p.props, [colourKey(p)!]: color } } : p)),
+    }))
+  if (!parts.length || wires.length) s.setWireColor(color)
 }
 
 type Point = { x: number; y: number }
@@ -48,11 +61,7 @@ export function RadialPicker() {
   const hovered = useRef<number | null>(null)
   const [centre, setCentre] = useState<Point | null>(null)
   const [hover, setHover] = useState<number | null>(null)
-  const current = useEditor((s) =>
-    s.selection?.kind === 'wire'
-      ? s.doc.wires.find((w) => w.id === s.selection!.id)?.color ?? s.wireColor
-      : colourProp()?.value ?? s.wireColor,
-  )
+  const current = useEditor(currentColour)
 
   const close = useCallback(() => {
     openAt.current = null

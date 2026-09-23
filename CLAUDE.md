@@ -53,7 +53,8 @@ Footprints come from real parts and the exact numbers matter. Where clones diffe
 
 ## State, keys, canvas
 
-- **Store** (`store.ts`, zustand): `change` commits with undo history, `preview` mutates without it, `checkpoint` opens an undo step before a drag. Drags use `checkpoint` once on first movement then `preview`. Multi-board storage is in `files.ts`; the localStorage prefix has migrated once already, so add migrations rather than renaming keys.
+- **Store** (`store.ts`, zustand): `change` commits with undo history, `preview` mutates without it, `checkpoint` opens an undo step before a drag. Drags use `checkpoint` once on first movement then `preview`.
+- **Selection** is a list of parts and wires (`Item[]`); `only(selection, kind)` is the single-item case the Properties panels use. Every edit on the selection (move, turn, swap sides, copy, delete) is a pure function in `items.ts`, and so is turning the whole board, so a new group edit belongs there. One part still rotates about its first pin; anything more turns as a group about its middle hole. Multi-board storage is in `files.ts`; the localStorage prefix has migrated once already, so add migrations rather than renaming keys.
 - **Keymap** (`keymap.ts`) is one table driving the key handler, every tooltip and the shortcuts panel. Never write a shortcut string in a component. Bindings match physical keys (`KeyboardEvent.code`) so the home-row/number-row layout survives other keyboard layouts, with ⌥ mnemonics alongside.
 - **Canvas layering is a feature.** Board → far-side ghosts → far wires → pins → near wires → junctions → annotations → near bodies → names → selection and overlays. Hiding the Parts layer is how the user inspects connections, so nothing electrical may be drawn above part bodies. Overlays that must stay reachable (wire vertex handles, pin tooltips, the pin-label popup) are drawn after bodies or in HTML above the SVG.
 - **Radix for UI chrome**, plain SVG for the board. One trap: Radix `Tooltip.Trigger` overwrites a child's `data-state`, so toggle styling keys off `aria-checked`/`aria-pressed`. Another: SVG classes and UI classes share one stylesheet and user units are millimetres, so a stray `font-size` in a UI rule renders as 12 mm on the board. Keep the two naming sets distinct.
@@ -62,4 +63,4 @@ Footprints come from real parts and the exact numbers matter. Where clones diffe
 
 The app is deliberately lenient about what real hand soldering allows, and strict about telling the user what it assumed. When a new capability blurs that line, prefer surfacing it in Checks over silently deciding.
 
-Known gaps, roughly in the order they have come up: dragging a whole wire segment sideways; inserting or deleting a wire vertex; multi-select; a 1:1 print or SVG export for drilling and layout; more part variants as the user's parts bin grows.
+Known gaps, roughly in the order they have come up: dragging a whole wire segment sideways; inserting or deleting a wire vertex; a 1:1 print or SVG export for drilling and layout; more part variants as the user's parts bin grows.

@@ -4,7 +4,7 @@ import { partById } from '../library'
 import { partPins, PITCH, propsOf } from '../model/geometry'
 import { WIRE_COLORS } from '../model/routing'
 import type { Hole, PartDef, PartInstance, Props, Wire } from '../model/types'
-import { useEditor } from '../store'
+import { isSelected, useEditor } from '../store'
 import { useAnalysis } from '../useAnalysis'
 
 // What makes one part a different thing to buy: everything but the text that
@@ -53,7 +53,7 @@ interface Group {
 // What to gather before soldering: one line per kind of part, with how many of
 // them and which designators they are on the board.
 export function Parts() {
-  const { doc, selected } = useEditor(useShallow((s) => ({ doc: s.doc, selected: s.selection?.id })))
+  const { doc, selection } = useEditor(useShallow((s) => ({ doc: s.doc, selection: s.selection })))
   const { refs } = useAnalysis()
   const e = useEditor.getState
   // A panel that goes away while hovered gets no mouseleave.
@@ -80,10 +80,13 @@ export function Parts() {
     return same.length ? [{ name, value, count: same.length, mm: same.reduce((n, w) => n + wireLength(w), 0), holes: same.flatMap((w) => w.points) }] : []
   })
 
-  // Clicking the same line again steps to the next one of that kind.
-  const step = (group: Group) => {
-    const i = group.parts.findIndex((p) => p.id === selected)
-    e().select({ kind: 'part', id: group.parts[(i + 1) % group.parts.length].id })
+  // Clicking the same line again steps to the next one of that kind; with
+  // shift it adds all of them to the selection.
+  const step = (group: Group, all: boolean) => {
+    const items = group.parts.map((p) => ({ kind: 'part' as const, id: p.id }))
+    if (all) return e().select([...selection.filter((i) => !items.some((p) => p.id === i.id)), ...items])
+    const i = group.parts.findIndex((p) => isSelected(selection, p.id))
+    e().select([items[(i + 1) % items.length]])
   }
 
   if (!tally.length && !wires.length) return <p className="checks-empty">Nothing on the board yet — pick a part from the library.</p>
@@ -94,9 +97,9 @@ export function Parts() {
         {tally.map((group) => (
           <li key={kind(group.def, group.props)}>
             <button
-              aria-current={group.parts.some((p) => p.id === selected)}
+              aria-current={group.parts.some((p) => isSelected(selection, p.id))}
               onMouseEnter={() => e().setHighlight(group.parts.flatMap((p) => partPins(p, group.def)))}
-              onClick={() => step(group)}
+              onClick={(ev) => step(group, ev.shiftKey)}
             >
               <span className="tally">{group.parts.length}×</span>
               <span className="part-name">

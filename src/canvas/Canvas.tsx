@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { docBoard, partById, pinsAt } from '../library'
-import { newId, updatePart, updateWire } from '../model/doc'
+import { newId, updateWire } from '../model/doc'
 import { centreOffset, holeKey, holeToMm, mmToHole, partPins } from '../model/geometry'
 import { editPinLabel, finishDraft } from '../actions'
 import { corner, moveVertex, naturalBend, simplify } from '../model/routing'
-import type { BoardDef, Hole, PartInstance, Side, Wire } from '../model/types'
-import { useEditor, type Draft, type ViewKey } from '../store'
+import type { BoardDef, Doc, Hole, PartInstance, Side, Wire } from '../model/types'
+import { holesOf, move } from '../items'
+import { isSelected, only, useEditor, type Draft, type Item, type ViewKey } from '../store'
 import { useAnalysis } from '../useAnalysis'
 import type { Net } from '../analysis'
 import { coords } from '../model/naming'
@@ -18,7 +19,8 @@ import { WireHandles, WireView } from './WireView'
 
 type Drag =
   | { kind: 'pan'; x: number; y: number; vx: number; vy: number }
-  | { kind: 'part'; id: string; start: Hole; col: number; row: number; moved: boolean }
+  | { kind: 'items'; start: Hole; base: Doc; ids: Set<string>; moved: boolean; collapse?: Item }
+  | { kind: 'box'; start: Hole }
   | { kind: 'vertex'; id: string; index: number; points: Hole[]; moved: boolean }
 
 const FLIP_MS = 520
@@ -63,6 +65,7 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
   const drag = useRef<Drag | null>(null)
   const [space, setSpace] = useState(false)
   const [straight, setStraight] = useState(false)
+  const [box, setBox] = useState<[Hole, Hole] | null>(null)
   const analysis = useAnalysis()
   const { doc, view, tool, placing, layers, selection, hover, draft, wireColor, fitNonce, highlight, pinEdit } = useEditor(
     useShallow((s) => ({
@@ -179,7 +182,23 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
     const s = useEditor.getState()
     s.change((d) => ({ ...d, parts: [...d.parts, next] }))
     if (!keepPlacing) s.setPlacing(null)
-    s.select({ kind: 'part', id: next.id })
+    s.select([{ kind: 'part', id: next.id }])
+  }
+
+  // What a box drag picks up: everything shown whose holes all lie inside it.
+  const boxed = ([a, b]: [Hole, Hole]): Item[] => {
+    const [c0, c1] = [Math.min(a[0], b[0]), Math.max(a[0], b[0])]
+    const [r0, r1] = [Math.min(a[1], b[1]), Math.max(a[1], b[1])]
+    const inside = (holes: Hole[]) => holes.every(([c, r]) => c >= c0 && c <= c1 && r >= r0 && r <= r1)
+    const visible = (side: Side) => side === shown || layers.far
+    return [
+      ...(layers.bodies ? doc.parts : [])
+        .filter((p) => visible(p.side) && inside(holesOf({ parts: [p], wires: [] })))
+        .map((p) => ({ kind: 'part' as const, id: p.id })),
+      ...(layers.wires ? doc.wires : [])
+        .filter((w) => visible(w.side) && inside(w.points))
+        .map((w) => ({ kind: 'wire' as const, id: w.id })),
+    ]
   }
 
   const addWirePoint = (hole: Hole, isStraight: boolean) => {
@@ -203,23 +222,41 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
     if (placing) return place(placing, hole, e.shiftKey)
     if (tool === 'wire') return addWirePoint(hole, e.shiftKey)
     const vertex = (e.target as Element).closest('[data-vertex]')
-    if (vertex && s.selection?.kind === 'wire') {
-      const wire = s.doc.wires.find((w) => w.id === s.selection!.id)!
+    const selectedWire = only(s.selection, 'wire')
+    if (vertex && selectedWire) {
+      const wire = s.doc.wires.find((w) => w.id === selectedWire)!
       drag.current = { kind: 'vertex', id: wire.id, index: Number(vertex.getAttribute('data-vertex')), points: wire.points, moved: false }
       return
     }
     const target = (e.target as Element).closest('[data-part],[data-wire]')
     const partId = target?.getAttribute('data-part')
     const wireId = target?.getAttribute('data-wire')
-    if (partId) {
-      const part = s.doc.parts.find((p) => p.id === partId)!
-      s.select({ kind: 'part', id: partId })
-      drag.current = { kind: 'part', id: partId, start: hole, col: part.col, row: part.row, moved: false }
-    } else if (wireId) {
-      s.select({ kind: 'wire', id: wireId })
-    } else {
-      s.select(null)
-      pan()
+    const item: Item | null = partId ? { kind: 'part', id: partId } : wireId ? { kind: 'wire', id: wireId } : null
+    if (!item) {
+      // Shift-drag on empty board draws a selection box; a plain drag pans.
+      if (e.shiftKey) {
+        drag.current = { kind: 'box', start: hole }
+        return setBox([hole, hole])
+      }
+      s.select([])
+      return pan()
+    }
+    if (e.shiftKey) {
+      const on = isSelected(s.selection, item.id)
+      return s.select(on ? s.selection.filter((i) => i.id !== item.id) : [...s.selection, item])
+    }
+    // Pressing on something already selected drags the whole selection; a
+    // click without moving then narrows it down to that one thing.
+    const keep = isSelected(s.selection, item.id)
+    const selection = keep ? s.selection : [item]
+    if (!keep) s.select(selection)
+    drag.current = {
+      kind: 'items',
+      start: hole,
+      base: s.doc,
+      ids: new Set(selection.map((i) => i.id)),
+      moved: false,
+      collapse: keep && s.selection.length > 1 ? item : undefined,
     }
   }
 
@@ -233,16 +270,16 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
     const d = drag.current
     if (d?.kind === 'pan') {
       s.setView(viewKey, { ...view, x: d.vx + e.clientX - d.x, y: d.vy + e.clientY - d.y })
-    } else if (d?.kind === 'part') {
-      const col = d.col + hole[0] - d.start[0]
-      const row = d.row + hole[1] - d.start[1]
-      const part = s.doc.parts.find((p) => p.id === d.id)
-      if (!part || (part.col === col && part.row === row)) return
+    } else if (d?.kind === 'items') {
+      const [dc, dr] = [hole[0] - d.start[0], hole[1] - d.start[1]]
+      if (!d.moved && !dc && !dr) return
       if (!d.moved) {
         s.checkpoint()
         d.moved = true
       }
-      s.preview((doc) => updatePart(doc, d.id, { col, row }))
+      s.preview(() => move(d.base, d.ids, dc, dr))
+    } else if (d?.kind === 'box') {
+      setBox([d.start, hole])
     } else if (d?.kind === 'vertex') {
       const [c, r] = d.points[d.index]
       if (!d.moved && c === hole[0] && r === hole[1]) return
@@ -257,6 +294,13 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
   const onPointerUp = () => {
     const d = drag.current
     drag.current = null
+    const s = useEditor.getState()
+    if (d?.kind === 'items' && !d.moved && d.collapse) s.select([d.collapse])
+    if (d?.kind === 'box' && box) {
+      const add = boxed(box).filter((i) => !isSelected(s.selection, i.id))
+      s.select([...s.selection, ...add])
+      setBox(null)
+    }
     if (d?.kind !== 'vertex' || !d.moved) return
     useEditor.getState().preview((doc) => {
       const wire = doc.wires.find((w) => w.id === d.id)
@@ -268,8 +312,8 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
   const near = placed.filter(({ part, def }) => part.side === shown && !def.annotation)
   const far = placed.filter(({ part, def }) => part.side !== shown && !def.annotation)
   const notes = placed.filter(({ part, def }) => part.side === shown && def.annotation)
-  const selectedWire = selection?.kind === 'wire' ? doc.wires.find((w) => w.id === selection.id && w.side === shown) : undefined
-  const selectedPart = selection?.kind === 'part' ? placed.find(({ part }) => part.id === selection.id) : undefined
+  const handles = doc.wires.find((w) => w.id === only(selection, 'wire') && w.side === shown)
+  const selectedParts = placed.filter(({ part }) => isSelected(selection, part.id))
   const ghost: Placed | null = (() => {
     if (!placing || !here) return null
     const def = partById(placing.def)!
@@ -320,7 +364,7 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
           <PinsLayer items={placed} board={board} facing={shown} conflicts={conflicts} live={liveHoles} />
           {layers.wires &&
             doc.wires.filter((w) => w.side === shown).map((w) => (
-              <WireView key={w.id} {...w} board={board} selected={selection?.id === w.id} live={liveWires.has(w.id)} />
+              <WireView key={w.id} {...w} board={board} selected={isSelected(selection, w.id)} live={liveWires.has(w.id)} />
             ))}
           {layers.wires &&
             analysis.junctions.map(({ hole: h, side, color, wire }) => {
@@ -332,8 +376,9 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
           {layers.bodies && near.map((p) => <PartBody key={p.part.id} {...p} board={board} />)}
           {layers.names && <NamesLayer names={names} board={board} mirrored={mirrored} />}
           {probed && <ProbeOverlay net={probed} wires={doc.wires} board={board} shown={shown} />}
-          {selectedPart && <SelectionOutline {...selectedPart} board={board} />}
-          {selectedWire && tool === 'select' && <WireHandles points={selectedWire.points} board={board} />}
+          {selectedParts.map((p) => <SelectionOutline key={p.part.id} {...p} board={board} />)}
+          {handles && tool === 'select' && <WireHandles points={handles.points} board={board} />}
+          {box && <SelectionBox box={box} board={board} />}
           {ghost && (
             <>
               <PartBody {...ghost} board={board} ghost far={ghost.part.side !== shown} />
@@ -425,6 +470,13 @@ function ProbeTip({ x, y, net }: { x: number; y: number; net: Net }) {
       {net.wires.length > 0 && <div className="pin-tip-part">via {net.wires.join(', ')}</div>}
     </div>
   )
+}
+
+function SelectionBox({ box: [a, b], board }: { box: [Hole, Hole]; board: BoardDef }) {
+  const p = holeToMm(board, [Math.min(a[0], b[0]), Math.min(a[1], b[1])])
+  const q = holeToMm(board, [Math.max(a[0], b[0]), Math.max(a[1], b[1])])
+  const pad = 1.27
+  return <rect className="selection-box" x={p.x - pad} y={p.y - pad} width={q.x - p.x + 2 * pad} height={q.y - p.y + 2 * pad} />
 }
 
 function HoverRing({ board, hole }: { board: BoardDef; hole: Hole }) {

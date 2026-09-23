@@ -361,6 +361,7 @@ kbd {
 .check-ring { fill: none; stroke: var(--danger); stroke-width: 0.45; pointer-events: none; animation: check-pulse 1s ease-in-out infinite; }
 @keyframes check-pulse { 50% { stroke-opacity: 0.35; } }
 .selection { fill: none; stroke: var(--accent); stroke-width: 0.35; }
+.selection-box { fill: var(--accent); fill-opacity: 0.08; stroke: var(--accent); stroke-width: 0.25; stroke-dasharray: 0.8 0.5; pointer-events: none; }
 .hover-ring { fill: none; stroke: var(--accent); stroke-width: 0.3; pointer-events: none; }
 .silk { font-size: 1.1px; fill: var(--ink); opacity: 0.75; }
 .names { pointer-events: none; }

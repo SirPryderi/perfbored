@@ -18,10 +18,6 @@ export function updateWire(doc: Doc, id: string, patch: Partial<Wire>): Doc {
   return { ...doc, wires: doc.wires.map((w) => (w.id === id ? { ...w, ...patch } : w)) }
 }
 
-export function removeById(doc: Doc, id: string): Doc {
-  return { ...doc, parts: doc.parts.filter((p) => p.id !== id), wires: doc.wires.filter((w) => w.id !== id) }
-}
-
 // Tactile buttons had a legend drawn beside them before every part could be
 // named; it is the button's name now.
 function migratePart(part: PartInstance): PartInstance {
