@@ -1,5 +1,5 @@
 import { partById } from '../library'
-import { holeToMm, partPins } from '../model/geometry'
+import { holeToMm, partPins, propsOf } from '../model/geometry'
 import type { BoardDef, Bounds, Doc, Side } from '../model/types'
 
 const FONT = 2.2
@@ -51,7 +51,7 @@ export function layoutNames(doc: Doc, board: BoardDef, shown: Side): Names {
   for (const part of doc.parts) {
     const def = partById(part.def)
     if (!def) continue
-    const name = String({ ...def.defaults, ...part.props }.name ?? '').trim()
+    const name = String(propsOf(part, def).name ?? '').trim()
     const points = name ? partPins(part, def).map((h) => holeToMm(board, h)) : []
     if (!points.length) continue
     const xs = points.map((p) => p.x)

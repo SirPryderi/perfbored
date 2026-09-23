@@ -1,6 +1,6 @@
 import { analyze } from './analysis'
 import { docBoard, partById } from './library'
-import { namedPins, PITCH } from './model/geometry'
+import { namedPins, PITCH, propsOf } from './model/geometry'
 import { coords } from './model/naming'
 import { WIRE_COLORS } from './model/routing'
 import type { Doc, Wire } from './model/types'
@@ -39,7 +39,7 @@ export function describe(doc: Doc): string {
     const span = holes.length
       ? `${c.col(cols[0])}–${c.col(cols[cols.length - 1])} × ${c.row(rows[0])}–${c.row(rows[rows.length - 1])}`
       : ''
-    const props = Object.entries({ ...def.defaults, ...part.props })
+    const props = Object.entries(propsOf(part, def))
       .filter(([, v]) => v !== '')
       .map(([k, v]) => `${k}=${String(v).includes(',') ? `"${v}"` : v}`)
       .join(', ')
@@ -81,7 +81,7 @@ export function describe(doc: Doc): string {
     out('NOTES')
     for (const part of notes) {
       const def = partById(part.def)!
-      const props = Object.entries({ ...def.defaults, ...part.props }).map(([k, v]) => `${k}=${v}`).join(', ')
+      const props = Object.entries(propsOf(part, def)).map(([k, v]) => `${k}=${v}`).join(', ')
       out(`${def.name} · ${part.side} · centred ${at([part.col, part.row])} · ${props}`)
     }
     out()

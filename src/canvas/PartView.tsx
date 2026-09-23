@@ -1,4 +1,4 @@
-import { holeToMm, inflate, partPins, partTransform, PITCH } from '../model/geometry'
+import { holeToMm, inflate, partBounds, partPins, partTransform, PITCH, propsOf, viewOf } from '../model/geometry'
 import type { BoardDef, PartDef, PartInstance, Side } from '../model/types'
 
 export interface Placed {
@@ -13,13 +13,13 @@ interface BodyProps extends Placed {
 }
 
 export function PartBody({ part, def, board, far, ghost }: BodyProps) {
-  const props = { ...def.defaults, ...part.props }
-  const b = def.bounds(props)
+  const props = propsOf(part, def)
+  const b = partBounds(part, def)
   const cls = ['part', far && 'far', ghost && 'ghost'].filter(Boolean).join(' ')
   return (
     <g className={cls} transform={partTransform(board, part)} data-part={ghost || far ? undefined : part.id}>
       <rect className="hit" x={b.x} y={b.y} width={b.w} height={b.h} />
-      {def.render(props, { flipped: !!part.flipped, rot: part.rot })}
+      {def.render(props, viewOf(part))}
       {def.pads &&
         def.pins(props).map(([c, r]) => <circle key={`${c},${r}`} className="pad-top" cx={c * PITCH} cy={r * PITCH} r={0.72} />)}
     </g>
@@ -60,7 +60,7 @@ export function PinsLayer({ items, board, facing, conflicts, ghost }: PinsProps)
 }
 
 export function SelectionOutline({ part, def, board }: Placed & { board: BoardDef }) {
-  const b = inflate(def.bounds({ ...def.defaults, ...part.props }), 0.9)
+  const b = inflate(partBounds(part, def), 0.9)
   return (
     <g transform={partTransform(board, part)}>
       <rect className="selection" x={b.x} y={b.y} width={b.w} height={b.h} rx={1} />

@@ -44,14 +44,14 @@ function devkit(k: DevKit): PartDef {
         <rect className="body metal" x={x0 + 6} y={cy - 8} width={17} height={16} rx={0.6} />
         <path className="edge" d={`M ${x0 + 1.2} ${cy - 6} h 2.5 v 3 h -2.5 v 3 h 2.5 v 3 h -2.5 v 3 h 2.5`} />
         <rect className="body metal" x={x1 - 5.5} y={cy - 4} width={6.3} height={8} rx={0.8} />
-        <Upright className="ink" x={(x0 + 23 + x1 - 5.5) / 2} y={cy + 1} fontSize={2.8} anchor="middle" view={view}>
+        <Upright className="ink" x={(x0 + 23 + x1 - 5.5) / 2} y={cy} fontSize={2.8} anchor="middle" view={view}>
           ESP32
         </Upright>
         {k.top.map(([silk], i) => (
-          <Upright key={`t${i}`} className="silk" x={i * PITCH + 0.4} y={1.6} rotate={90} view={view}>{silk}</Upright>
+          <Upright key={`t${i}`} className="silk" x={i * PITCH} y={1.6} rotate={90} view={view}>{silk}</Upright>
         ))}
         {k.bottom.map(([silk], i) => (
-          <Upright key={`b${i}`} className="silk" x={i * PITCH + 0.4} y={bottomY - 1.6} rotate={90} anchor="end" view={view}>
+          <Upright key={`b${i}`} className="silk" x={i * PITCH} y={bottomY - 1.6} rotate={90} anchor="end" view={view}>
             {silk}
           </Upright>
         ))}
@@ -152,14 +152,14 @@ function oled(o: Oled): PartDef {
       <>
         <rect className="body screen" x={x} y={top} width={o.width} height={o.height} rx={1} />
         {String(p.pinout).split(' ').map((n, i) => (
-          <Upright key={i} className="silk" x={i * PITCH} y={2.1} fontSize={0.85} anchor="middle" view={view}>{n}</Upright>
+          <Upright key={i} className="silk" x={i * PITCH} y={1.8} fontSize={0.85} anchor="middle" view={view}>{n}</Upright>
         ))}
         {holes.map(([hx, hy], i) => (
           <circle key={i} className="mount" cx={x + hx} cy={top + hy} r={1.35} />
         ))}
         <rect className="glass" x={cx - o.glass[0] / 2} y={top + o.glass[2]} width={o.glass[0]} height={o.glass[1]} rx={0.5} />
         <rect className="active" x={cx - o.active[0] / 2} y={top + o.active[2]} width={o.active[0]} height={o.active[1]} />
-        <Upright className="ink" x={cx} y={top + o.active[2] + o.active[1] / 2 + 1} fontSize={2.6} anchor="middle" view={view}>
+        <Upright className="ink" x={cx} y={top + o.active[2] + o.active[1] / 2} fontSize={2.6} anchor="middle" view={view}>
           {o.caption}
         </Upright>
       </>

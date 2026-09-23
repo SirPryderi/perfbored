@@ -1,5 +1,5 @@
 import { docBoard, partById } from './library'
-import { holeKey, holeToMm, isMirrored, namedPins, rotateHole } from './model/geometry'
+import { holeKey, holeToMm, isMirrored, namedPins, partBounds, rotateHole } from './model/geometry'
 import { coords } from './model/naming'
 import type { Doc, Hole, PartDef, PartInstance, Side, Wire } from './model/types'
 
@@ -68,7 +68,7 @@ class Groups {
 }
 
 function box(doc: Doc, part: PartInstance, def: PartDef) {
-  const b = def.bounds({ ...def.defaults, ...part.props })
+  const b = partBounds(part, def)
   const origin = holeToMm(docBoard(doc), [part.col, part.row])
   const corners = [
     [b.x, b.y],

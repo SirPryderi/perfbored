@@ -1,6 +1,6 @@
 import { docBoard, partById } from './library'
 import { emptyDoc, newId, parseDoc, removeById, updatePart } from './model/doc'
-import { isMirrored, partPins } from './model/geometry'
+import { isMirrored, partPins, propsOf } from './model/geometry'
 import type { Naming, Origin } from './model/naming'
 import { simplify } from './model/routing'
 import { listFiles, loadFile, removeFile, saveFile } from './files'
@@ -77,7 +77,7 @@ export function setPinLabel(partId: string, index: number, label: string) {
   const part = state().doc.parts.find((p) => p.id === partId)
   const def = part && partById(part.def)
   if (!part || !def?.pinLabel) return
-  const props = def.pinLabel.set({ ...def.defaults, ...part.props }, index, label)
+  const props = def.pinLabel.set(propsOf(part, def), index, label)
   state().change((d) => updatePart(d, partId, { props }))
 }
 

@@ -22,9 +22,21 @@ export function removeById(doc: Doc, id: string): Doc {
   return { ...doc, parts: doc.parts.filter((p) => p.id !== id), wires: doc.wires.filter((w) => w.id !== id) }
 }
 
+// Tactile buttons had a legend drawn beside them before every part could be
+// named; it is the button's name now.
+function migratePart(part: PartInstance): PartInstance {
+  const { label, ...props } = part.props
+  if (!part.def.startsWith('button-') || label === undefined) return part
+  return { ...part, props: { ...props, name: props.name || label } }
+}
+
 export function parseDoc(text: string): Doc {
   const doc = JSON.parse(text)
   if (doc?.version !== 1 || !Array.isArray(doc.parts) || !Array.isArray(doc.wires) || typeof doc.board !== 'string')
     throw new Error('Not a perfboard file')
-  return { ...doc, wires: doc.wires.map((w: Wire) => ({ ...w, side: w.side ?? 'back' })) }
+  return {
+    ...doc,
+    parts: doc.parts.map(migratePart),
+    wires: doc.wires.map((w: Wire) => ({ ...w, side: w.side ?? 'back' })),
+  }
 }

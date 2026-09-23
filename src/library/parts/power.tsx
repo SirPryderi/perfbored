@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import { PITCH } from '../../model/geometry'
 import type { PartDef, Props, Suggestion } from '../../model/types'
-import { NAME } from './labels'
 import { Upright } from './Upright'
 
 // DC-005 style 5.5 × 2.1 mm barrel jack seen from above, mouth towards the top.
@@ -12,8 +11,6 @@ export const barrelJack: PartDef = {
   category: 'Power',
   ref: 'J',
   pads: true,
-  defaults: { name: '' },
-  props: [NAME],
   pins: () => [[0, 0], [0, -2], [2, -1]],
   pinNames: () => [
     'Center pin · usually +',
@@ -91,9 +88,8 @@ export const fuseHolder: PartDef = {
   name: 'Fuse',
   category: 'Power',
   ref: 'F',
-  defaults: { type: '5×20 glass holder', rating: '2A', name: '' },
+  defaults: { type: '5×20 glass holder', rating: '2A' },
   props: [
-    NAME,
     { key: 'type', label: 'Type', type: 'select', options: Object.keys(FUSES) },
     { key: 'rating', label: 'Rating', type: 'text', suggestions: RATINGS },
   ],
@@ -106,7 +102,7 @@ export const fuseHolder: PartDef = {
     return (
       <>
         {f.draw(f.span)}
-        <Upright className={f.darkText ? 'ink' : 'ink light'} x={(f.span * PITCH) / 2} y={b.y + b.h - 0.6} fontSize={1.1} anchor="middle" view={view}>
+        <Upright className={f.darkText ? 'ink' : 'ink light'} x={(f.span * PITCH) / 2} y={b.y + b.h - 1} fontSize={1.1} anchor="middle" view={view}>
           {p.rating}
         </Upright>
       </>

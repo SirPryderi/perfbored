@@ -200,6 +200,8 @@ kbd {
 .row > :not(label) { justify-self: start; min-width: 0; }
 .row.column > :not(label) { grid-column: 1 / -1; justify-self: stretch; padding-bottom: 6px; }
 .fields .input, .fields .combo { width: 100%; }
+.fields .number { width: 100%; }
+.fields .number .input { width: 64px; flex: none; }
 .inline { display: flex; align-items: center; gap: 4px; }
 .meta { color: var(--ink-2); font-size: 12px; }
 .input {

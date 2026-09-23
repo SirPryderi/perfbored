@@ -1,7 +1,7 @@
 import { PITCH } from '../../model/geometry'
 import { WIRE_COLORS } from '../../model/routing'
-import type { Hole, PartDef, PinLabel } from '../../model/types'
-import { listLabels, NAME, pinLabelName, splitLabels } from './labels'
+import type { Bounds, Hole, PartDef, PinLabel, Props, Rotation } from '../../model/types'
+import { listLabels, pinLabelName, splitLabels } from './labels'
 import { Upright } from './Upright'
 
 export const header: PartDef = {
@@ -10,9 +10,8 @@ export const header: PartDef = {
   category: 'Connectors',
   ref: 'J',
   stacks: true,
-  defaults: { count: 4, kind: 'female', color: WIRE_COLORS[1].value, labels: '', name: '' },
+  defaults: { count: 4, kind: 'female', color: WIRE_COLORS[1].value, labels: '' },
   props: [
-    NAME,
     { key: 'count', label: 'Pins', type: 'number', min: 1, max: 40 },
     { key: 'kind', label: 'Type', type: 'select', options: ['female', 'male'] },
     { key: 'color', label: 'Colour', type: 'color' },
@@ -41,10 +40,9 @@ export const screwTerminal: PartDef = {
   name: 'Screw terminal 5.08mm',
   category: 'Connectors',
   ref: 'J',
-  defaults: { count: 2, labels: '', name: '' },
+  defaults: { count: 2, labels: '' },
   props: [
-    NAME,
-    { key: 'count', label: 'Ways', type: 'number', min: 2, max: 6 },
+    { key: 'count', label: 'Pins', type: 'number', min: 2, max: 6 },
     { key: 'labels', label: 'Pin labels', type: 'text', caption: true },
   ],
   pinLabel: listLabels('labels'),
@@ -73,9 +71,8 @@ export const jstXh: PartDef = {
   name: 'JST XH connector',
   category: 'Connectors',
   ref: 'J',
-  defaults: { count: 2, style: 'vertical', labels: '', name: '' },
+  defaults: { count: 2, style: 'vertical', labels: '' },
   props: [
-    NAME,
     { key: 'count', label: 'Pins', type: 'number', min: 2, max: 10 },
     { key: 'style', label: 'Style', type: 'select', options: ['vertical', 'right angle'] },
     { key: 'labels', label: 'Pin labels', type: 'text', caption: true },
@@ -130,9 +127,8 @@ export const xt30: PartDef = {
   name: 'XT30 board mount',
   category: 'Connectors',
   ref: 'J',
-  defaults: { style: 'vertical', gender: 'female', polarity: '+ −', name: '' },
+  defaults: { style: 'vertical', gender: 'female', polarity: '+ −' },
   props: [
-    NAME,
     { key: 'style', label: 'Style', type: 'select', options: ['vertical', 'right angle'] },
     { key: 'gender', label: 'Contacts', type: 'select', options: ['female', 'male'] },
     { key: 'polarity', label: 'Polarity', type: 'select', options: ['+ −', '− +'] },
@@ -167,7 +163,7 @@ export const xt30: PartDef = {
         <>
           <path className="body xt" d={face(-2.6)} />
           {contacts(0)}
-          {marks(-3)}
+          {marks(-3.4)}
         </>
       )
     return (
@@ -178,13 +174,47 @@ export const xt30: PartDef = {
         <rect className="body xt" x={cx - 5.1} y={0.8} width={10.2} height={10} rx={0.6} />
         <path className="edge" d={face(5.6)} />
         {contacts(8.2)}
-        {marks(-1.7)}
+        {marks(-2.1)}
       </>
     )
   },
 }
 
 const singleLabel: PinLabel = { get: (p) => String(p.label ?? ''), set: (p, _, label) => ({ ...p, label }) }
+
+const TAG_H = 2.2
+const tagWidth = (label: unknown) => Math.max(3.2, String(label).length * 0.82 + 1.8)
+
+// The tag reads level on the board whichever way the part is turned. It sits
+// off the end of the lead, or beside a bare pad, in the direction the part
+// points: up at 0°, and turning with it.
+function tag(p: Props, rot: Rotation): Bounds {
+  const w = tagWidth(p.label)
+  const reach = p.style === 'lead' ? 3.6 : 1.5
+  const turn = p.style === 'lead' ? rot : (rot + 90) % 360
+  switch (turn) {
+    case 90: return { x: reach, y: -TAG_H / 2, w, h: TAG_H }
+    case 180: return { x: -w / 2, y: reach, w, h: TAG_H }
+    case 270: return { x: -reach - w, y: -TAG_H / 2, w, h: TAG_H }
+    default: return { x: -w / 2, y: -reach - TAG_H, w, h: TAG_H }
+  }
+}
+
+// A box on the board back into the part's own turned frame.
+function unturn(b: Bounds, rot: Rotation): Bounds {
+  switch (rot) {
+    case 90: return { x: b.y, y: -b.x - b.w, w: b.h, h: b.w }
+    case 180: return { x: -b.x - b.w, y: -b.y - b.h, w: b.w, h: b.h }
+    case 270: return { x: -b.y - b.h, y: b.x, w: b.h, h: b.w }
+    default: return b
+  }
+}
+
+const union = (a: Bounds, b: Bounds): Bounds => {
+  const x = Math.min(a.x, b.x)
+  const y = Math.min(a.y, b.y)
+  return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y }
+}
 
 // Where a wire leaves the board: a solder pad, optionally with a flying lead.
 export const offBoard: PartDef = {
@@ -201,23 +231,20 @@ export const offBoard: PartDef = {
   pinLabel: singleLabel,
   pins: () => [[0, 0]],
   pinNames: (p) => [String(p.label).trim() || 'Lead'],
-  bounds: (p) => {
-    const w = tagWidth(p.label)
-    return p.style === 'lead' ? { x: -w / 2, y: -5.8, w, h: 6.9 } : { x: -1.1, y: -1.1, w: w + 2.6, h: 2.2 }
-  },
+  bounds: (p, view) => union({ x: -1.1, y: -1.1, w: 2.2, h: 2.2 }, unturn(tag(p, view.rot), view.rot)),
   render: (p, view) => {
-    const w = tagWidth(p.label)
-    const lead = p.style === 'lead'
-    const [tx, ty] = lead ? [-w / 2, -5.8] : [1.5, -1.1]
+    const t = tag(p, view.rot)
     return (
       <>
         <circle className="pad" cx={0} cy={0} r={0.95} />
-        {lead && <line className="lead-wire" x1={0} y1={-0.2} x2={0} y2={-3.6} />}
-        <rect className="tag" x={tx} y={ty} width={w} height={2.2} rx={1.1} />
-        <Upright className="tag-text" x={tx + w / 2} y={ty + 1.55} anchor="middle" view={view}>{p.label}</Upright>
+        {p.style === 'lead' && <line className="lead-wire" x1={0} y1={-0.2} x2={0} y2={-3.6} />}
+        <g transform={`rotate(${-view.rot})`}>
+          <rect className="tag" x={t.x} y={t.y} width={t.w} height={t.h} rx={TAG_H / 2} />
+          <Upright className="tag-text" x={t.x + t.w / 2} y={t.y + TAG_H / 2} anchor="middle" view={{ flipped: false, rot: 0 }}>
+            {p.label}
+          </Upright>
+        </g>
       </>
     )
   },
 }
-
-const tagWidth = (label: unknown) => Math.max(3.2, String(label).length * 0.82 + 1.8)

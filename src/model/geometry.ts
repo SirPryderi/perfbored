@@ -1,4 +1,4 @@
-import type { BoardDef, Bounds, Hole, PartDef, PartInstance, Rotation } from './types'
+import type { BoardDef, Bounds, Hole, PartDef, PartInstance, PartView, Props, Rotation } from './types'
 
 export const PITCH = 2.54
 
@@ -37,8 +37,14 @@ export function orient(p: Hole, part: PartInstance): Hole {
   return [isMirrored(part) ? -c : c, r]
 }
 
+export const propsOf = (part: PartInstance, def: PartDef): Props => ({ ...def.defaults, ...part.props })
+
+export const viewOf = (part: PartInstance): PartView => ({ flipped: !!part.flipped, rot: part.rot })
+
+export const partBounds = (part: PartInstance, def: PartDef) => def.bounds(propsOf(part, def), viewOf(part))
+
 export function partPins(part: PartInstance, def: PartDef): Hole[] {
-  return def.pins({ ...def.defaults, ...part.props }).map((p) => {
+  return def.pins(propsOf(part, def)).map((p) => {
     const [c, r] = orient(p, part)
     return [part.col + c, part.row + r]
   })
@@ -50,7 +56,7 @@ export interface NamedPin {
 }
 
 export function namedPins(part: PartInstance, def: PartDef): NamedPin[] {
-  const names = def.pinNames?.({ ...def.defaults, ...part.props }) ?? []
+  const names = def.pinNames?.(propsOf(part, def)) ?? []
   return partPins(part, def).map((hole, i) => ({ hole, name: names[i] ?? `Pin ${i + 1}` }))
 }
 
@@ -65,7 +71,7 @@ export function inflate(b: Bounds, by: number): Bounds {
 
 // Offset (in holes) that puts a part's centre under the cursor while placing.
 export function centreOffset(def: PartDef, part: PartInstance): Hole {
-  const b = def.bounds({ ...def.defaults, ...part.props })
+  const b = partBounds(part, def)
   const [c, r] = orient([(b.x + b.w / 2) / PITCH, (b.y + b.h / 2) / PITCH], part)
   return [Math.round(c), Math.round(r)]
 }

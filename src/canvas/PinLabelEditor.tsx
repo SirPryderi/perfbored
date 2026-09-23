@@ -2,6 +2,7 @@ import { Popover } from 'radix-ui'
 import { useState } from 'react'
 import { setPinLabel } from '../actions'
 import { partById } from '../library'
+import { propsOf } from '../model/geometry'
 import { useEditor, type PinEdit } from '../store'
 
 // A small popup next to a pin for typing its label; closes and saves on Enter
@@ -9,7 +10,7 @@ import { useEditor, type PinEdit } from '../store'
 export function PinLabelEditor({ edit, x, y }: { edit: PinEdit; x: number; y: number }) {
   const part = useEditor((s) => s.doc.parts.find((p) => p.id === edit.partId))
   const def = part && partById(part.def)
-  const current = def?.pinLabel?.get({ ...def.defaults, ...part!.props }, edit.index) ?? ''
+  const current = (part && def && def.pinLabel?.get(propsOf(part, def), edit.index)) || ''
   const [value, setValue] = useState(current)
   if (!part || !def?.pinLabel) return null
   const close = (save: boolean) => {

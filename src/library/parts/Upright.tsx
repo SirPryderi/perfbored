@@ -18,7 +18,8 @@ const swap: Record<Anchor, Anchor> = { start: 'end', middle: 'middle', end: 'sta
 
 // Text on a part that stays readable however the part is mounted and turned:
 // never mirrored, and turned the right way up when it would read upside down,
-// while keeping its place on the part.
+// while keeping its place on the part. (x, y) is the middle of the text's
+// height, so a label lines up with the pin it names at any rotation.
 export function Upright({ x, y, view, rotate = 0, anchor = 'start', className, fontSize, children }: Props) {
   const net = (((rotate + (view.flipped ? -view.rot : view.rot)) % 360) + 360) % 360
   const turn = net === 180
@@ -30,7 +31,7 @@ export function Upright({ x, y, view, rotate = 0, anchor = 'start', className, f
       style={fontSize ? { fontSize } : undefined}
       transform={`translate(${x} ${y})${view.flipped ? ' scale(-1 1)' : ''} rotate(${rotate + (turn ? 180 : 0)})`}
       textAnchor={side}
-      dominantBaseline={turn ? 'hanging' : undefined}
+      dominantBaseline="central"
     >
       {children}
     </text>

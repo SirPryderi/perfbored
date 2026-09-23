@@ -1,6 +1,5 @@
 import { PITCH } from '../../model/geometry'
 import type { PartDef } from '../../model/types'
-import { Upright } from './Upright'
 
 function tactile(id: string, name: string, span: number, size: number, cap: number): PartDef {
   const cx = (span * PITCH) / 2
@@ -10,21 +9,16 @@ function tactile(id: string, name: string, span: number, size: number, cap: numb
     name,
     category: 'Switches',
     ref: 'SW',
-    defaults: { label: '' },
-    props: [{ key: 'label', label: 'Label', type: 'text', caption: true }],
     pins: () => [[0, 0], [span, 0], [0, 2], [span, 2]],
     pinNames: () => {
       const side = (s: string, other: string) => `${s} · always joined to the other ${s}, pressing joins it to ${other}`
       return [side('1', '2'), side('1', '2'), side('2', '1'), side('2', '1')]
     },
     bounds: () => ({ x: cx - size / 2, y: cy - size / 2, w: size, h: size }),
-    render: (p, view) => (
+    render: () => (
       <>
         <rect className="body" x={cx - size / 2} y={cy - size / 2} width={size} height={size} rx={size / 10} />
         <circle className="edge" cx={cx} cy={cy} r={cap} />
-        {p.label ? (
-          <Upright className="ink muted" x={cx + size / 2 + 1.2} y={cy + 0.9} fontSize={2.6} view={view}>{p.label}</Upright>
-        ) : null}
       </>
     ),
   }

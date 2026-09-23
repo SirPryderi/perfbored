@@ -15,9 +15,9 @@ import {
 } from '../actions'
 import { docBoard, partById } from '../library'
 import { updatePart, updateWire } from '../model/doc'
-import { PITCH } from '../model/geometry'
+import { PITCH, propsOf } from '../model/geometry'
 import { coords, namingOf, originLabel, originOf, ORIGINS, type Naming, type Origin } from '../model/naming'
-import type { PartInstance, PropSpec, PropValue, Side, Wire } from '../model/types'
+import type { PartInstance, PropSpec, PropValue, Side, Unit, Wire } from '../model/types'
 import { useEditor, type Panel } from '../store'
 import { useAnalysis } from '../useAnalysis'
 import { commands, type CommandId } from '../keymap'
@@ -86,28 +86,39 @@ function Field({ spec, value, onChange }: { spec: PropSpec; value: PropValue; on
         </DropdownMenu.Root>
       </div>
     )
+  if (spec.type === 'number') {
+    const step = spec.step ?? 1
+    return (
+      <div className="inline number">
+        <input
+          className="input"
+          type="number"
+          value={value}
+          min={spec.min}
+          max={spec.max}
+          step={step}
+          onFocus={() => e().checkpoint()}
+          onChange={(ev) => {
+            const n = Math.round(Number(ev.target.value) / step) * step
+            if (ev.target.value !== '' && Number.isFinite(n)) onChange(Math.min(spec.max, Math.max(spec.min, n)))
+          }}
+        />
+        {spec.unit && <span className="meta">{unitText(spec.unit, Number(value))}</span>}
+      </div>
+    )
+  }
   return (
-    <input
-      className="input"
-      type={spec.type}
-      value={value}
-      min={spec.type === 'number' ? spec.min : undefined}
-      max={spec.type === 'number' ? spec.max : undefined}
-      onFocus={() => e().checkpoint()}
-      onChange={(ev) => {
-        if (spec.type !== 'number') return onChange(ev.target.value)
-        const n = Number(ev.target.value)
-        if (Number.isFinite(n)) onChange(Math.min(spec.max, Math.max(spec.min, n)))
-      }}
-    />
+    <input className="input" value={value} onFocus={() => e().checkpoint()} onChange={(ev) => onChange(ev.target.value)} aria-label={spec.label} />
   )
 }
+
+const unitText = (unit: Unit, n: number) => (unit === 'holes' ? `holes · ${((n - 1) * PITCH).toFixed(2)} mm` : unit)
 
 function PartPanel({ part }: { part: PartInstance }) {
   const doc = useEditor((s) => s.doc)
   const def = partById(part.def)
   if (!def) return null
-  const props = { ...def.defaults, ...part.props }
+  const props = propsOf(part, def)
   return (
     <>
       <h2>{def.name}</h2>

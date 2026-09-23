@@ -9,8 +9,8 @@ export const lightWindow: PartDef = {
   defaults: { shape: 'pill', width: 13, height: 13 },
   props: [
     { key: 'shape', label: 'Shape', type: 'select', options: ['pill', 'rectangle'] },
-    { key: 'width', label: 'Width (mm)', type: 'number', min: 2, max: 100 },
-    { key: 'height', label: 'Height (mm)', type: 'number', min: 2, max: 100 },
+    { key: 'width', label: 'Width', type: 'number', min: 2, max: 100, unit: 'mm' },
+    { key: 'height', label: 'Height', type: 'number', min: 2, max: 100, unit: 'mm' },
   ],
   pins: () => [],
   bounds: (p) => ({ x: -Number(p.width) / 2, y: -Number(p.height) / 2, w: Number(p.width), h: Number(p.height) }),
@@ -29,7 +29,7 @@ export const label: PartDef = {
   defaults: { text: 'Label', size: 3 },
   props: [
     { key: 'text', label: 'Text', type: 'text' },
-    { key: 'size', label: 'Size (mm)', type: 'number', min: 1, max: 12 },
+    { key: 'size', label: 'Size', type: 'number', min: 1, max: 12, unit: 'mm' },
   ],
   pins: () => [],
   bounds: (p) => {
@@ -37,6 +37,6 @@ export const label: PartDef = {
     return { x: 0, y: -s * 0.85, w: Math.max(1, String(p.text).length) * s * 0.58, h: s * 1.1 }
   },
   render: (p, view) => (
-    <Upright className="ink" x={0} y={0} fontSize={Number(p.size)} view={view}>{p.text}</Upright>
+    <Upright className="ink" x={0} y={-0.35 * Number(p.size)} fontSize={Number(p.size)} view={view}>{p.text}</Upright>
   ),
 }

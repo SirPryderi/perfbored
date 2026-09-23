@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { partById } from '../library'
-import { partPins, PITCH } from '../model/geometry'
+import { partPins, PITCH, propsOf } from '../model/geometry'
 import { WIRE_COLORS } from '../model/routing'
 import type { Hole, PartDef, PartInstance, Props, Wire } from '../model/types'
 import { useEditor } from '../store'
@@ -11,11 +11,12 @@ import { useAnalysis } from '../useAnalysis'
 // varies board to board, such as pin labels or a switch's legend.
 const specs = (def: PartDef) => (def.props ?? []).filter((p) => !(p.type === 'text' && p.caption))
 
-// A number on its own means nothing here, so it keeps its label: "Pins 4".
+// A number on its own means nothing here, so it keeps its label and unit:
+// "Pins 4", "Leg span 5 holes".
 const summary = (def: PartDef, props: Props) =>
   specs(def)
     .filter((p) => p.type !== 'color' && props[p.key] !== '')
-    .map((p) => (p.type === 'number' ? `${p.label} ${props[p.key]}` : String(props[p.key])))
+    .map((p) => (p.type === 'number' ? [p.label, props[p.key], p.unit].filter(Boolean).join(' ') : String(props[p.key])))
     .join(' · ')
 
 const swatches = (def: PartDef, props: Props) =>
@@ -62,7 +63,7 @@ export function Parts() {
   for (const part of doc.parts) {
     const def = partById(part.def)
     if (!def || def.annotation) continue
-    const props = { ...def.defaults, ...part.props }
+    const props = propsOf(part, def)
     const group = groups.get(kind(def, props)) ?? { def, props, parts: [], refs: [] }
     group.parts.push(part)
     group.refs.push(refs.get(part.id) ?? '?')

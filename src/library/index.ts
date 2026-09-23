@@ -1,6 +1,7 @@
-import { namedPins } from '../model/geometry'
+import { namedPins, propsOf } from '../model/geometry'
 import type { Hole, PartDef, PartInstance } from '../model/types'
 import { label, lightWindow } from './parts/annotations'
+import { NAME } from './parts/labels'
 import { ceramicCap, diode, electrolyticCap, led, piezo, resistor, transistor } from './parts/basics'
 import { header, jstXh, offBoard, screwTerminal, xt30 } from './parts/connectors'
 import { drv8833, genericBreakout, tb6612 } from './parts/breakouts'
@@ -8,6 +9,11 @@ import { dipIc, dipSocket } from './parts/ics'
 import { esp32DevKit30, esp32DevKitC38, oled096, oled15 } from './parts/modules'
 import { barrelJack, fuseHolder } from './parts/power'
 import { button12, button6, pushLatch, slideSwitch } from './parts/switches'
+
+// Any part can be given a name, drawn off the board by the Names layer.
+// Annotations and off-board leads are text already.
+const named = (def: PartDef): PartDef =>
+  def.annotation || def.overlay ? def : { ...def, defaults: { name: '', ...def.defaults }, props: [NAME, ...(def.props ?? [])] }
 
 export const parts: PartDef[] = [
   esp32DevKit30,
@@ -39,7 +45,7 @@ export const parts: PartDef[] = [
   screwTerminal,
   lightWindow,
   label,
-]
+].map(named)
 
 const byId = new Map(parts.map((p) => [p.id, p]))
 
@@ -53,7 +59,7 @@ export function pinsAt(parts: PartInstance[], [c, r]: Hole) {
       .filter(({ hole }) => hole[0] === c && hole[1] === r)
       .map(({ name }) => {
         const [pin, ...details] = name.split(' · ')
-        const given = String(part.props.name ?? '').trim()
+        const given = String(propsOf(part, def).name ?? '').trim()
         return { name: pin, detail: details.join(' · '), part: given ? `${def.name} · ${given}` : def.name, side: part.side }
       })
   })

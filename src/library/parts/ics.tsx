@@ -1,7 +1,18 @@
 import { PITCH } from '../../model/geometry'
-import type { Hole, PartDef, Props } from '../../model/types'
+import type { Hole, PartDef, Props, Suggestion } from '../../model/types'
 import { listLabels, pinLabelName, splitLabels } from './labels'
 import { Upright } from './Upright'
+
+// Most hobby chips are 0.3" wide, which is 4 holes across.
+const CHIPS: Suggestion[] = [
+  { value: 'NE555', hint: 'Timer: blinkers, tones, delays · 8 pins' },
+  { value: 'LM358', hint: 'Two op-amps: amplify or compare signals · 8 pins' },
+  { value: 'ATtiny85', hint: 'Small microcontroller · 8 pins' },
+  { value: 'PC817', hint: 'Optocoupler: signal across two circuits · 4 pins' },
+  { value: '74HC595', hint: 'Shift register: 8 outputs from 3 pins · 16 pins' },
+  { value: 'ULN2003', hint: 'Seven drivers for relays and steppers · 16 pins' },
+  { value: 'L293D', hint: 'Dual motor driver · 16 pins' },
+]
 
 // DIP pins run anticlockwise from the notch: down the left side, then back up
 // the right one. They are listed in that order, so pin N is always index N-1
@@ -25,11 +36,13 @@ function dip(id: string, name: string, socket: boolean): PartDef {
     pads: true,
     stacks: socket,
     ref: socket ? 'XU' : 'U',
-    defaults: { label: socket ? '' : 'IC', pins: 8, width: 4, labels: '' },
+    defaults: { label: socket ? '' : 'NE555', pins: 8, width: 4, labels: '' },
     props: [
-      { key: 'label', label: 'Label', type: 'text' },
-      { key: 'pins', label: 'Legs', type: 'number', min: 2, max: 64 },
-      { key: 'width', label: 'Width in holes', type: 'number', min: 2, max: 12 },
+      socket
+        ? { key: 'label', label: 'For chip', type: 'text' }
+        : { key: 'label', label: 'Part number', type: 'text', suggestions: CHIPS },
+      { key: 'pins', label: 'Pins', type: 'number', min: 4, max: 64, step: 2 },
+      { key: 'width', label: 'Width', type: 'number', min: 2, max: 12, unit: 'holes' },
       { key: 'labels', label: 'Pin labels', type: 'text', caption: true },
     ],
     pinLabel: listLabels('labels'),
@@ -70,7 +83,7 @@ function dip(id: string, name: string, socket: boolean): PartDef {
           {p.label !== '' && (
             <Upright
               className={socket ? 'silk' : 'ink light'}
-              x={cx + 0.4}
+              x={cx}
               y={edge + h / 2}
               rotate={span >= 16 ? 0 : 90}
               anchor="middle"
@@ -82,11 +95,11 @@ function dip(id: string, name: string, socket: boolean): PartDef {
           )}
           {room &&
             labels.slice(0, n).map((l, i) => (
-              <Upright key={`l${i}`} className="ink light" x={1.4} y={i * PITCH + 0.35} fontSize={0.9} view={view}>{l}</Upright>
+              <Upright key={`l${i}`} className="ink light" x={1.4} y={i * PITCH} fontSize={0.9} view={view}>{l}</Upright>
             ))}
           {room &&
             labels.slice(n, 2 * n).map((l, i) => (
-              <Upright key={`r${i}`} className="ink light" x={span - 1.4} y={(n - 1 - i) * PITCH + 0.35} anchor="end" fontSize={0.9} view={view}>
+              <Upright key={`r${i}`} className="ink light" x={span - 1.4} y={(n - 1 - i) * PITCH} anchor="end" fontSize={0.9} view={view}>
                 {l}
               </Upright>
             ))}

@@ -61,21 +61,21 @@ export function breakout(b: Breakout): PartDef {
           {b.chip && (
             <>
               <rect className="body dark" x={cx - chip / 2} y={cy - 3.5} width={chip} height={7} rx={0.4} />
-              <Upright className="ink light" x={cx + 0.3} y={cy} rotate={90} anchor="middle" fontSize={0.9} view={view}>
+              <Upright className="ink light" x={cx} y={cy} rotate={90} anchor="middle" fontSize={0.9} view={view}>
                 {b.chip}
               </Upright>
             </>
           )}
           {title && gap(p) >= 2 && (
-            <Upright className="ink" x={cx + 0.45} y={cy} rotate={gap(p) >= 7 ? 0 : 90} anchor="middle" fontSize={1.3} view={view}>
+            <Upright className="ink" x={cx} y={cy} rotate={gap(p) >= 7 ? 0 : 90} anchor="middle" fontSize={1.3} view={view}>
               {title}
             </Upright>
           )}
           {left.map((l, i) => (
-            <Upright key={`l${i}`} className="silk" x={1.3} y={i * PITCH + 0.4} view={view}>{l}</Upright>
+            <Upright key={`l${i}`} className="silk" x={1.3} y={i * PITCH} view={view}>{l}</Upright>
           ))}
           {right.map((l, i) => (
-            <Upright key={`r${i}`} className="silk" x={gap(p) * PITCH - 1.3} y={i * PITCH + 0.4} anchor="end" view={view}>
+            <Upright key={`r${i}`} className="silk" x={gap(p) * PITCH - 1.3} y={i * PITCH} anchor="end" view={view}>
               {l}
             </Upright>
           ))}
@@ -94,9 +94,9 @@ export const genericBreakout = breakout({
   title: (p) => String(p.label),
   defaults: { label: 'Breakout', pins: 6, width: 6, left: '', right: '' },
   props: [
-    { key: 'label', label: 'Label', type: 'text' },
-    { key: 'pins', label: 'Pins along length', type: 'number', min: 1, max: 40 },
-    { key: 'width', label: 'Width in holes', type: 'number', min: 1, max: 20 },
+    { key: 'label', label: 'Part number', type: 'text' },
+    { key: 'pins', label: 'Pins per side', type: 'number', min: 1, max: 40 },
+    { key: 'width', label: 'Width', type: 'number', min: 1, max: 20, unit: 'holes' },
   ],
 })
 

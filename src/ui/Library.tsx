@@ -7,10 +7,11 @@ import { useEditor } from '../store'
 
 function Preview({ def }: { def: PartDef }) {
   const props = { ...def.defaults }
-  const b = inflate(def.bounds(props), 1)
+  const view = { flipped: false, rot: 0 } as const
+  const b = inflate(def.bounds(props, view), 1)
   return (
     <svg className="preview" viewBox={`${b.x} ${b.y} ${b.w} ${b.h}`}>
-      <g className="part">{def.render(props, { flipped: false, rot: 0 })}</g>
+      <g className="part">{def.render(props, view)}</g>
     </svg>
   )
 }

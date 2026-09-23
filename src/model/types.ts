@@ -57,10 +57,12 @@ export interface Suggestion {
   hint: string
 }
 
+export type Unit = 'holes' | 'mm'
+
 export type PropSpec =
   | { key: string; label: string; type: 'select'; options: string[] }
   | { key: string; label: string; type: 'text'; suggestions?: Suggestion[]; caption?: boolean }
-  | { key: string; label: string; type: 'number'; min: number; max: number }
+  | { key: string; label: string; type: 'number'; min: number; max: number; step?: number; unit?: Unit }
   | { key: string; label: string; type: 'color' }
 
 export interface PartView {
@@ -87,7 +89,7 @@ export interface PartDef {
   pads?: boolean
   pins: (props: Props) => Hole[]
   pinNames?: (props: Props) => string[]
-  bounds: (props: Props) => Bounds
+  bounds: (props: Props, view: PartView) => Bounds
   pinLabel?: PinLabel
   render: (props: Props, view: PartView) => ReactNode
 }
