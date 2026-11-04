@@ -20,7 +20,7 @@ import { coords, namingOf, originLabel, originOf, ORIGINS, type Naming, type Ori
 import type { PartInstance, PropSpec, PropValue, Side, Unit, Wire } from '../model/types'
 import { only, useEditor, type Item, type Panel } from '../store'
 import { useAnalysis } from '../useAnalysis'
-import { commands, type CommandId } from '../keymap'
+import { commandIds, commands, commandText } from '../keymap'
 import { Checks } from './Checks'
 import { Parts } from './Parts'
 import { Swatches } from './Swatches'
@@ -265,10 +265,12 @@ function BoardPanel() {
         <div className="row">
           <label>Turn</label>
           <div className="inline">
-            <Tip command="rotateBoard">
+            <Tip command="rotateBoardBack">
               <button className="icon-button" onClick={() => rotateBoard(-90)} aria-label="Turn the board left"><ResetIcon /></button>
             </Tip>
-            <button className="icon-button mirror" onClick={() => rotateBoard(90)} aria-label="Turn the board right"><ResetIcon /></button>
+            <Tip command="rotateBoard">
+              <button className="icon-button mirror" onClick={() => rotateBoard(90)} aria-label="Turn the board right"><ResetIcon /></button>
+            </Tip>
             <span className="meta">{doc.portrait ? 'portrait' : 'landscape'}</span>
           </div>
         </div>
@@ -313,9 +315,9 @@ function BoardPanel() {
 function Shortcuts() {
   return (
     <dl className="shortcuts">
-      {(Object.keys(commands) as CommandId[]).map((id) => (
+      {commandIds.filter((id) => commands[id].keys.length).map((id) => (
         <div key={id}>
-          <dt>{commands[id].label}</dt>
+          <dt>{commandText(id)}</dt>
           <dd><Keys command={id} /></dd>
         </div>
       ))}

@@ -11,7 +11,7 @@ function hint(s: { placing: boolean; tool: string; drafting: boolean }) {
   if (s.tool === 'wire') return 'Click a hole to start a wire on this side'
   if (s.tool === 'probe') return 'Hover a pin or wire to light up everything connected to it · wires join only at their ends · drag to pan'
   if (s.tool === 'pan') return 'Drag to pan · ⌘ + scroll to zoom · 0 fits the board'
-  return 'Drag to move · Shift-click or Shift-drag to select more · ⌘C ⌘V copy and paste · R rotates · T moves to the other side · hold F for wire colours'
+  return 'Drag to move · Shift-click or Shift-drag to select more · ⌘C ⌘V copy and paste · R rotates · T moves to the other side · hold C for wire colours'
 }
 
 export function StatusBar() {

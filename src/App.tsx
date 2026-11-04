@@ -2,6 +2,7 @@ import { Tooltip } from 'radix-ui'
 import { useShallow } from 'zustand/react/shallow'
 import { Canvas } from './canvas/Canvas'
 import { useEditor } from './store'
+import { CommandPalette } from './ui/CommandPalette'
 import { Inspector } from './ui/Inspector'
 import { Library } from './ui/Library'
 import { RadialPicker } from './ui/RadialPicker'
@@ -40,6 +41,7 @@ export function App() {
         <StatusBar />
       </div>
       <RadialPicker />
+      <CommandPalette />
     </Tooltip.Provider>
   )
 }

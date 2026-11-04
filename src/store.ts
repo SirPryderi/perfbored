@@ -42,6 +42,7 @@ interface EditorState {
   fileId: string
   files: FileMeta[]
   menu: Menu
+  palette: boolean
   panel: Panel
   pinEdit: PinEdit | null
   notice: string | null
@@ -67,6 +68,7 @@ interface EditorState {
   redo: () => void
   open: (fileId: string, doc: Doc) => void
   setMenu: (menu: Menu) => void
+  setPalette: (palette: boolean) => void
   setPanel: (panel: Panel) => void
   setPinEdit: (edit: PinEdit | null) => void
   notify: (notice: string) => void
@@ -92,6 +94,7 @@ export const useEditor = create<EditorState>((set) => ({
   fileId: first.id,
   files: listFiles(),
   menu: null,
+  palette: false,
   panel: 'properties',
   pinEdit: null,
   notice: null,
@@ -133,6 +136,7 @@ export const useEditor = create<EditorState>((set) => ({
       fitNonce: s.fitNonce + 1,
     })),
   setMenu: (menu) => set({ menu }),
+  setPalette: (palette) => set((s) => ({ palette, menu: palette ? null : s.menu })),
   setPanel: (panel) => set({ panel, highlight: null }),
   setPinEdit: (pinEdit) => set({ pinEdit }),
   notify: (notice) => {

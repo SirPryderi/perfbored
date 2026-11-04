@@ -7,6 +7,14 @@ export interface FileMeta {
   updated: number
 }
 
+export function ago(time: number) {
+  const minutes = Math.round((Date.now() - time) / 60000)
+  if (minutes < 1) return 'now'
+  if (minutes < 60) return `${minutes}m`
+  if (minutes < 60 * 24) return `${Math.round(minutes / 60)}h`
+  return `${Math.round(minutes / 60 / 24)}d`
+}
+
 const INDEX = 'perfbored:files'
 const CURRENT = 'perfbored:current'
 const docKey = (id: string) => `perfbored:doc:${id}`
@@ -34,16 +42,44 @@ export function loadFile(id: string): Doc | null {
   }
 }
 
-export function saveFile(id: string, doc: Doc) {
+function writeFile(id: string, doc: Doc, updated: number) {
   localStorage.setItem(docKey(id), JSON.stringify(doc))
-  localStorage.setItem(CURRENT, id)
   const others = read<FileMeta[]>(INDEX, []).filter((f) => f.id !== id)
-  localStorage.setItem(INDEX, JSON.stringify([...others, { id, name: doc.name, updated: Date.now() }]))
+  localStorage.setItem(INDEX, JSON.stringify([...others, { id, name: doc.name, updated }]))
+}
+
+export function saveFile(id: string, doc: Doc) {
+  writeFile(id, doc, Date.now())
+  localStorage.setItem(CURRENT, id)
 }
 
 export function removeFile(id: string) {
   localStorage.removeItem(docKey(id))
   localStorage.setItem(INDEX, JSON.stringify(read<FileMeta[]>(INDEX, []).filter((f) => f.id !== id)))
+}
+
+export const exportBoards = () => ({
+  version: 1,
+  boards: listFiles().flatMap((f) => {
+    const doc = loadFile(f.id)
+    return doc ? [{ updated: f.updated, doc }] : []
+  }),
+})
+
+// Adds to the boards already here and never replaces one: a board identical to
+// an existing one is skipped, so importing the same file twice changes nothing.
+// Returns null when the text is not an export of all boards.
+export function importBoards(text: string): { added: number; skipped: number } | null {
+  const data = JSON.parse(text)
+  if (!Array.isArray(data?.boards)) return null
+  const incoming = data.boards.map((b: { updated?: number; doc: unknown }) => ({
+    updated: b.updated ?? Date.now(),
+    doc: parseDoc(JSON.stringify(b.doc)),
+  }))
+  const existing = new Set(listFiles().map((f) => JSON.stringify(loadFile(f.id))))
+  const fresh = incoming.filter((b: { doc: Doc }) => !existing.has(JSON.stringify(b.doc)))
+  for (const b of fresh) writeFile(newId(), b.doc, b.updated)
+  return { added: fresh.length, skipped: incoming.length - fresh.length }
 }
 
 function migrate() {

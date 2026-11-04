@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { finishDraft, undoDraftPoint } from './actions'
-import { commands, matches, type Command } from './keymap'
+import { commands, matches } from './keymap'
 import { useEditor } from './store'
 
 export const typing = (t: EventTarget | null) =>
@@ -9,8 +9,13 @@ export const typing = (t: EventTarget | null) =>
 export function useShortcuts() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (typing(e.target) || e.repeat) return
+      if (e.repeat) return
       const s = useEditor.getState()
+      if (commands.palette.keys.some((k) => matches(k, e))) {
+        e.preventDefault()
+        return s.setPalette(!s.palette)
+      }
+      if (s.palette || typing(e.target)) return
       if (s.draft) {
         const draftKeys: Record<string, () => void> = {
           Enter: finishDraft,
@@ -28,9 +33,7 @@ export function useShortcuts() {
         s.select([])
         return
       }
-      const command = Object.values(commands as Record<string, Command>).find(
-        (c) => c.run && c.keys.some((k) => matches(k, e)),
-      )
+      const command = Object.values(commands).find((c) => c.run && c.keys.some((k) => matches(k, e)))
       if (command && command.run!(e) !== false) e.preventDefault()
     }
     window.addEventListener('keydown', onKey)

@@ -4,10 +4,10 @@ import { emptyDoc, newId, parseDoc, updatePart } from './model/doc'
 import { partPins, propsOf } from './model/geometry'
 import type { Naming, Origin } from './model/naming'
 import { simplify } from './model/routing'
-import { listFiles, loadFile, removeFile, saveFile } from './files'
-import type { Doc, Hole, Rotation } from './model/types'
+import { exportBoards, importBoards, listFiles, loadFile, removeFile, saveFile } from './files'
+import type { Doc, Hole, PartDef, PartInstance, Rotation } from './model/types'
 import { describe } from './report'
-import { only, useEditor, type Item } from './store'
+import { isSelected, only, useEditor, type Item } from './store'
 
 const state = () => useEditor.getState()
 
@@ -40,10 +40,14 @@ export function flipSide() {
   if (ids.size) state().change((d) => otherSide(d, ids))
 }
 
+const selectedFlippable = () => pick(state().doc, selectedIds()).parts.filter((p) => partById(p.def)?.flippable)
+
+export const canUpsideDown = () => selectedFlippable().length > 0
+
 // Turning a module upside down mirrors it; it shifts so its legs stay put.
 export function upsideDown() {
   const s = state()
-  const flippable = pick(s.doc, selectedIds()).parts.filter((p) => partById(p.def)?.flippable)
+  const flippable = selectedFlippable()
   if (!flippable.length) return
   const ids = new Set(flippable.map((p) => p.id))
   s.change((d) => ({
@@ -123,6 +127,8 @@ export function duplicate() {
 // copies text anywhere else on the page. They survive switching boards.
 let clipboard: Items | null = null
 
+export const hasClipboard = () => clipboard !== null
+
 // Returns false when there is nothing selected, leaving the key to the page.
 export function copy() {
   const items = pick(state().doc, selectedIds())
@@ -144,6 +150,43 @@ export function paste() {
   const [cc, cr] = centreOf(clipboard)
   const [dc, dr] = hover ? [hover[0] - cc, hover[1] - cr] : [2, 2]
   add(copies(clipboard, dc, dr))
+}
+
+export function placePart(def: PartDef) {
+  const s = state()
+  s.setPlacing(
+    s.placing?.def === def.id ? null : { id: '', def: def.id, col: 0, row: 0, rot: 0, side: 'front', props: { ...def.defaults } },
+  )
+}
+
+const colourKey = (part: PartInstance) => partById(part.def)?.props?.find((spec) => spec.type === 'color')?.key
+
+// What a colour applies to: the selected wires, and selected parts that have a
+// colour of their own, such as a header's plastic.
+function coloured(s = state()) {
+  const wires = s.doc.wires.filter((w) => isSelected(s.selection, w.id))
+  const parts = s.doc.parts.filter((p) => isSelected(s.selection, p.id) && colourKey(p))
+  return { wires, parts }
+}
+
+export function currentColour(s = state()) {
+  const { wires, parts } = coloured(s)
+  if (wires.length) return wires[0].color
+  const part = parts[0]
+  return part ? String(propsOf(part, partById(part.def)!)[colourKey(part)!]) : s.wireColor
+}
+
+export function applyColour(color: string) {
+  const s = state()
+  const { wires, parts } = coloured(s)
+  const ids = new Set([...wires, ...parts].map((i) => i.id))
+  if (ids.size)
+    s.change((d) => ({
+      ...d,
+      wires: d.wires.map((w) => (ids.has(w.id) ? { ...w, color } : w)),
+      parts: d.parts.map((p) => (ids.has(p.id) ? { ...p, props: { ...p.props, [colourKey(p)!]: color } } : p)),
+    }))
+  if (!parts.length || wires.length) s.setWireColor(color)
 }
 
 export function finishDraft() {
@@ -224,19 +267,36 @@ export async function copyJson() {
   state().notify('Copied this board as JSON — paste it into a chat, or into a file to open later')
 }
 
-export function exportJson() {
-  const doc = state().doc
-  const blob = new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' })
+function download(data: unknown, filename: string) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
-  a.download = `${doc.name.trim().replace(/[^\w-]+/g, '-') || 'board'}.perfbored.json`
+  a.download = filename
   a.click()
   URL.revokeObjectURL(a.href)
 }
 
+export function exportJson() {
+  const doc = state().doc
+  download(doc, `${doc.name.trim().replace(/[^\w-]+/g, '-') || 'board'}.perfbored.json`)
+}
+
+const count = (n: number) => `${n} board${n === 1 ? '' : 's'}`
+
+export function exportAll() {
+  const backup = exportBoards()
+  download(backup, `perfbored-boards-${new Date().toISOString().slice(0, 10)}.json`)
+  const unreadable = listFiles().length - backup.boards.length
+  state().notify(`Exported ${count(backup.boards.length)}${unreadable ? `, ${unreadable} could not be read` : ''}`)
+}
+
 export async function importJson(file: File) {
   try {
-    openNew(parseDoc(await file.text()))
+    const text = await file.text()
+    const result = importBoards(text)
+    if (!result) return openNew(parseDoc(text))
+    useEditor.setState({ files: listFiles() })
+    state().notify(`Imported ${count(result.added)}${result.skipped ? `, ${result.skipped} already here` : ''}`)
   } catch (e) {
     alert(`Couldn't open ${file.name}: ${(e as Error).message}`)
   }

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Tooltip } from 'radix-ui'
-import { commands, shortcut, type CommandId } from '../keymap'
+import { commandText, shortcut, type CommandId } from '../keymap'
 
 export function Keys({ command }: { command: CommandId }) {
   return (
@@ -18,7 +18,7 @@ export function Tip({ command, label, children }: { command?: CommandId; label?:
       <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
       <Tooltip.Portal>
         <Tooltip.Content className="tooltip" sideOffset={6}>
-          {label ?? (command && commands[command].label)}
+          {label ?? (command && commandText(command))}
           {command && <Keys command={command} />}
         </Tooltip.Content>
       </Tooltip.Portal>

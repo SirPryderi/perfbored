@@ -1,5 +1,6 @@
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons'
 import { useState } from 'react'
+import { placePart } from '../actions'
 import { categories, parts } from '../library'
 import { inflate } from '../model/geometry'
 import type { PartDef } from '../model/types'
@@ -22,11 +23,6 @@ export function Library() {
   const q = query.trim().toLowerCase()
   const matches = parts.filter((p) => !q || p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q))
 
-  const pick = (def: PartDef) =>
-    useEditor.getState().setPlacing(
-      placing === def.id ? null : { id: '', def: def.id, col: 0, row: 0, rot: 0, side: 'front', props: { ...def.defaults } },
-    )
-
   return (
     <aside className="library">
       <label className="search">
@@ -41,7 +37,7 @@ export function Library() {
             <h3>{cat}</h3>
             <div className="items">
               {items.map((def) => (
-                <button key={def.id} className="item" data-active={placing === def.id} onClick={() => pick(def)}>
+                <button key={def.id} className="item" data-active={placing === def.id} onClick={() => placePart(def)}>
                   <Preview def={def} />
                   <span>{def.name}</span>
                 </button>

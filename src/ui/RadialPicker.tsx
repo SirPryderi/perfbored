@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { partById } from '../library'
-import { propsOf } from '../model/geometry'
-import type { PartInstance } from '../model/types'
+import { applyColour, currentColour } from '../actions'
 import { WIRE_COLORS } from '../model/routing'
-import { isSelected, useEditor } from '../store'
+import { useEditor } from '../store'
 import { commands, matches } from '../keymap'
 import { typing } from '../useShortcuts'
 
@@ -11,36 +9,6 @@ const RADIUS = 74
 const DEAD_ZONE = 28
 const STEP = (2 * Math.PI) / WIRE_COLORS.length
 const angleOf = (i: number) => i * STEP - Math.PI / 2
-
-const colourKey = (part: PartInstance) => partById(part.def)?.props?.find((spec) => spec.type === 'color')?.key
-
-// What a colour applies to: the selected wires, and selected parts that have a
-// colour of their own, such as a header's plastic.
-function coloured(s = useEditor.getState()) {
-  const wires = s.doc.wires.filter((w) => isSelected(s.selection, w.id))
-  const parts = s.doc.parts.filter((p) => isSelected(s.selection, p.id) && colourKey(p))
-  return { wires, parts }
-}
-
-function currentColour(s = useEditor.getState()) {
-  const { wires, parts } = coloured(s)
-  if (wires.length) return wires[0].color
-  const part = parts[0]
-  return part ? String(propsOf(part, partById(part.def)!)[colourKey(part)!]) : s.wireColor
-}
-
-function pick(color: string) {
-  const s = useEditor.getState()
-  const { wires, parts } = coloured(s)
-  const ids = new Set([...wires, ...parts].map((i) => i.id))
-  if (ids.size)
-    s.change((d) => ({
-      ...d,
-      wires: d.wires.map((w) => (ids.has(w.id) ? { ...w, color } : w)),
-      parts: d.parts.map((p) => (ids.has(p.id) ? { ...p, props: { ...p.props, [colourKey(p)!]: color } } : p)),
-    }))
-  if (!parts.length || wires.length) s.setWireColor(color)
-}
 
 type Point = { x: number; y: number }
 
@@ -78,7 +46,7 @@ export function RadialPicker() {
     }
     const onDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && openAt.current) return close()
-      if (e.repeat || typing(e.target) || !commands.colour.keys.some((k) => matches(k, e))) return
+      if (e.repeat || typing(e.target) || useEditor.getState().palette || !commands.colour.keys.some((k) => matches(k, e))) return
       e.preventDefault()
       if (openAt.current) return close()
       openAt.current = { ...pointer.current }
@@ -86,7 +54,7 @@ export function RadialPicker() {
     }
     const onUp = (e: KeyboardEvent) => {
       if (!commands.colour.keys.some((k) => k.code === e.code) || hovered.current === null) return
-      pick(WIRE_COLORS[hovered.current].value)
+      applyColour(WIRE_COLORS[hovered.current].value)
       close()
     }
     const onOpen = (e: Event) => {
@@ -127,7 +95,7 @@ export function RadialPicker() {
             }}
             onPointerDown={(e) => {
               e.stopPropagation()
-              pick(c.value)
+              applyColour(c.value)
               close()
             }}
           />

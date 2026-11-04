@@ -1,5 +1,6 @@
 import {
   ChevronDownIcon,
+  ChevronRightIcon,
   ColumnsIcon,
   CursorArrowIcon,
   GitHubLogoIcon,
@@ -7,29 +8,18 @@ import {
   HandIcon,
   LightningBoltIcon,
   LoopIcon,
+  MagnifyingGlassIcon,
   Pencil1Icon,
   ResetIcon,
   SquareIcon,
 } from '@radix-ui/react-icons'
 import { DropdownMenu, Toolbar as Bar } from 'radix-ui'
 import { useShallow } from 'zustand/react/shallow'
-import {
-  changeBoard,
-  copyForReview,
-  copyJson,
-  deleteFile,
-  duplicateFile,
-  exportJson,
-  importJson,
-  newBoard,
-  openFile,
-  rotateBoard,
-  setNaming,
-  setOrigin,
-} from '../actions'
+import { changeBoard, importJson, newBoard, openFile, setNaming, setOrigin } from '../actions'
+import { ago } from '../files'
 import { commands, type CommandId } from '../keymap'
 import { boards } from '../library'
-import { namingOf, originLabel, originOf, ORIGINS, type Naming, type Origin } from '../model/naming'
+import { NAMINGS, namingOf, originLabel, originOf, ORIGINS, type Naming, type Origin } from '../model/naming'
 import { useEditor, type Layer, type Layout, type Tool } from '../store'
 import { Keys, Tip } from './Tip'
 
@@ -49,20 +39,25 @@ const LAYERS: { id: Layer; label: string; command: CommandId }[] = [
   { id: 'names', label: 'Names', command: 'names' },
 ]
 
-function ago(time: number) {
-  const minutes = Math.round((Date.now() - time) / 60000)
-  if (minutes < 1) return 'now'
-  if (minutes < 60) return `${minutes}m`
-  if (minutes < 60 * 24) return `${Math.round(minutes / 60)}h`
-  return `${Math.round(minutes / 60 / 24)}d`
+function Item({ command }: { command: CommandId }) {
+  const { label, keys, danger, run } = commands[command]
+  return (
+    <DropdownMenu.Item className={danger ? 'menu-item danger' : 'menu-item'} onSelect={() => run?.()}>
+      {label}
+      {keys.length > 0 && <Keys command={command} />}
+    </DropdownMenu.Item>
+  )
 }
 
-function Item({ command, onSelect, children }: { command?: CommandId; onSelect: () => void; children: React.ReactNode }) {
+function SubTrigger({ command, children }: { command?: CommandId; children: React.ReactNode }) {
   return (
-    <DropdownMenu.Item className="menu-item" onSelect={onSelect}>
+    <DropdownMenu.SubTrigger className="menu-item">
       {children}
-      {command && <Keys command={command} />}
-    </DropdownMenu.Item>
+      <span className="menu-end">
+        {command && <Keys command={command} />}
+        <ChevronRightIcon />
+      </span>
+    </DropdownMenu.SubTrigger>
   )
 }
 
@@ -110,13 +105,13 @@ export function Toolbar() {
         </Tip>
         <DropdownMenu.Portal>
           <DropdownMenu.Content className="menu" align="start" sideOffset={6}>
-            <Item command="open" onSelect={() => document.getElementById('open-file')?.click()}>Open from disk…</Item>
-            <Item command="save" onSelect={exportJson}>Save to disk</Item>
-            <Item command="review" onSelect={copyForReview}>Copy for review</Item>
-            <Item command="copyJson" onSelect={copyJson}>Copy as JSON</Item>
+            <Item command="open" />
+            <Item command="save" />
+            <Item command="review" />
+            <Item command="copyJson" />
             <DropdownMenu.Separator className="menu-sep" />
             <DropdownMenu.Sub>
-              <DropdownMenu.SubTrigger className="menu-item">Board size</DropdownMenu.SubTrigger>
+              <SubTrigger>Board size</SubTrigger>
               <DropdownMenu.Portal>
                 <DropdownMenu.SubContent className="menu" sideOffset={4}>
                   <BoardSizes value={s.board} onPick={changeBoard} />
@@ -124,26 +119,25 @@ export function Toolbar() {
               </DropdownMenu.Portal>
             </DropdownMenu.Sub>
             <DropdownMenu.Sub>
-              <DropdownMenu.SubTrigger className="menu-item">Turn board</DropdownMenu.SubTrigger>
+              <SubTrigger>Turn board</SubTrigger>
               <DropdownMenu.Portal>
                 <DropdownMenu.SubContent className="menu" sideOffset={4}>
-                  <Item command="rotateBoard" onSelect={() => rotateBoard(90)}>Quarter turn right</Item>
-                  <Item onSelect={() => rotateBoard(-90)}>Quarter turn left</Item>
-                  <Item onSelect={() => rotateBoard(180)}>Upside down</Item>
+                  <Item command="rotateBoard" />
+                  <Item command="rotateBoardBack" />
+                  <Item command="rotateBoardHalf" />
                 </DropdownMenu.SubContent>
               </DropdownMenu.Portal>
             </DropdownMenu.Sub>
             <DropdownMenu.Sub>
-              <DropdownMenu.SubTrigger className="menu-item">Hole labels</DropdownMenu.SubTrigger>
+              <SubTrigger>Hole labels</SubTrigger>
               <DropdownMenu.Portal>
                 <DropdownMenu.SubContent className="menu" sideOffset={4}>
                   <DropdownMenu.RadioGroup value={s.naming} onValueChange={(v) => setNaming(v as Naming)}>
-                    <DropdownMenu.RadioItem value="letters" className="menu-item">
-                      Letters and numbers <span className="menu-hint">C7</span>
-                    </DropdownMenu.RadioItem>
-                    <DropdownMenu.RadioItem value="grid" className="menu-item">
-                      Columns and rows <span className="menu-hint">C3R7</span>
-                    </DropdownMenu.RadioItem>
+                    {NAMINGS.map((n) => (
+                      <DropdownMenu.RadioItem key={n.id} value={n.id} className="menu-item">
+                        {n.label} <span className="menu-hint">{n.example}</span>
+                      </DropdownMenu.RadioItem>
+                    ))}
                   </DropdownMenu.RadioGroup>
                   <DropdownMenu.Separator className="menu-sep" />
                   <DropdownMenu.Label className="menu-label">Numbers from</DropdownMenu.Label>
@@ -155,7 +149,7 @@ export function Toolbar() {
                 </DropdownMenu.SubContent>
               </DropdownMenu.Portal>
             </DropdownMenu.Sub>
-            <Item command="fit" onSelect={() => e().requestFit()}>Fit to screen</Item>
+            <Item command="fit" />
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
@@ -187,19 +181,18 @@ export function Toolbar() {
               </DropdownMenu.RadioGroup>
               <DropdownMenu.Separator className="menu-sep" />
               <DropdownMenu.Sub>
-                <DropdownMenu.SubTrigger className="menu-item">
-                  New board <Keys command="newBoard" />
-                </DropdownMenu.SubTrigger>
+                <SubTrigger command="newBoard">New board</SubTrigger>
                 <DropdownMenu.Portal>
                   <DropdownMenu.SubContent className="menu" sideOffset={4}>
                     <BoardSizes onPick={newBoard} />
                   </DropdownMenu.SubContent>
                 </DropdownMenu.Portal>
               </DropdownMenu.Sub>
-              <Item onSelect={duplicateFile}>Duplicate board</Item>
-              <DropdownMenu.Item className="menu-item danger" onSelect={() => deleteFile(s.fileId)}>
-                Delete board
-              </DropdownMenu.Item>
+              <Item command="duplicateBoard" />
+              <Item command="deleteBoard" />
+              <DropdownMenu.Separator className="menu-sep" />
+              <Item command="exportAll" />
+              <Item command="importAll" />
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
@@ -263,6 +256,9 @@ export function Toolbar() {
 
       <div className="spacer" />
 
+      <Tip command="palette">
+        <Bar.Button className="tool" onClick={() => e().setPalette(true)} aria-label={commands.palette.label}><MagnifyingGlassIcon /></Bar.Button>
+      </Tip>
       <Tip label="Source on GitHub">
         <Bar.Link className="tool" href={REPO} target="_blank" rel="noreferrer" aria-label="Source on GitHub">
           <GitHubLogoIcon />

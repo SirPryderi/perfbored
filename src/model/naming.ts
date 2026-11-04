@@ -9,6 +9,11 @@ export type Origin = 'bottom-left' | 'top-left' | 'bottom-right' | 'top-right'
 
 export const ORIGINS: Origin[] = ['bottom-left', 'top-left', 'bottom-right', 'top-right']
 
+export const NAMINGS: { id: Naming; label: string; example: string }[] = [
+  { id: 'letters', label: 'Letters and numbers', example: 'C7' },
+  { id: 'grid', label: 'Columns and rows', example: 'C3R7' },
+]
+
 const letters = (i: number): string => (i < 26 ? '' : letters(Math.floor(i / 26) - 1)) + String.fromCharCode(65 + (i % 26))
 
 export const namingOf = (doc: Doc): Naming => doc.naming ?? 'letters'
