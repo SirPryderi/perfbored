@@ -66,7 +66,7 @@ const hasSelection = () => s().selection.length > 0
 const hasPart = () => s().selection.some((i) => i.kind === 'part')
 
 const table = {
-  palette: { label: 'Command palette', hint: 'find any action by name', group: 'View', keys: [{ code: 'KeyK', mod: true }], unlisted: true },
+  palette: { label: 'Command palette', hint: 'find any action by name', group: 'View', keys: [{ code: 'KeyK', mod: true }], run: () => s().setPalette(true), unlisted: true },
   select: { label: 'Select', group: 'Tools', keys: [{ code: 'KeyA' }, { code: 'KeyV', alt: true }], ...tool('select') },
   wire: { label: 'Wire', group: 'Tools', keys: [{ code: 'KeyS' }, { code: 'KeyW', alt: true }], ...tool('wire') },
   probe: {

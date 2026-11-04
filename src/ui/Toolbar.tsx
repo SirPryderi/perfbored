@@ -1,4 +1,5 @@
 import {
+  CheckIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   ColumnsIcon,
@@ -40,26 +41,40 @@ const LAYERS: { id: Layer; label: string; command: CommandId }[] = [
 ]
 
 function Item({ command }: { command: CommandId }) {
-  const { label, keys, danger, run } = commands[command]
+  const { label, keys, danger, run, when, on } = commands[command]
   return (
-    <DropdownMenu.Item className={danger ? 'menu-item danger' : 'menu-item'} onSelect={() => run?.()}>
+    <DropdownMenu.Item className={danger ? 'menu-item danger' : 'menu-item'} disabled={when?.() === false} onSelect={() => run?.()}>
       {label}
-      {keys.length > 0 && <Keys command={command} />}
+      <span className="menu-end">
+        {on?.() && <CheckIcon />}
+        {keys.length > 0 && <Keys command={command} />}
+      </span>
     </DropdownMenu.Item>
   )
 }
 
-function SubTrigger({ command, children }: { command?: CommandId; children: React.ReactNode }) {
+function Sub({ label, command, children }: { label: string; command?: CommandId; children: React.ReactNode }) {
   return (
-    <DropdownMenu.SubTrigger className="menu-item">
-      {children}
-      <span className="menu-end">
-        {command && <Keys command={command} />}
-        <ChevronRightIcon />
-      </span>
-    </DropdownMenu.SubTrigger>
+    <DropdownMenu.Sub>
+      <DropdownMenu.SubTrigger className="menu-item">
+        {label}
+        <span className="menu-end">
+          {command && <Keys command={command} />}
+          <ChevronRightIcon />
+        </span>
+      </DropdownMenu.SubTrigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.SubContent className="menu" sideOffset={4}>{children}</DropdownMenu.SubContent>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Sub>
   )
 }
+
+// A closed menu hands the keyboard back to the board. Left on its trigger, the
+// arrows that nudge the selection would open the menu again.
+const leaveFocus = (e: Event) => e.preventDefault()
+
+const Separator = () => <DropdownMenu.Separator className="menu-sep" />
 
 function BoardSizes({ value, onPick }: { value?: string; onPick: (id: string) => void }) {
   return (
@@ -73,6 +88,27 @@ function BoardSizes({ value, onPick }: { value?: string; onPick: (id: string) =>
   )
 }
 
+function BoardList() {
+  const files = useEditor((s) => s.files)
+  const fileId = useEditor((s) => s.fileId)
+  return (
+    <DropdownMenu.RadioGroup value={fileId} onValueChange={openFile}>
+      {files.map((f) => (
+        <DropdownMenu.RadioItem key={f.id} value={f.id} className="menu-item">
+          <span className="file-name">{f.name || 'Untitled'}</span>
+          <span className="menu-hint">{ago(f.updated)}</span>
+        </DropdownMenu.RadioItem>
+      ))}
+    </DropdownMenu.RadioGroup>
+  )
+}
+
+const NewBoard = () => (
+  <Sub label={commands.newBoard.label} command="newBoard">
+    <BoardSizes onPick={newBoard} />
+  </Sub>
+)
+
 export function Toolbar() {
   const s = useEditor(
     useShallow((s) => ({
@@ -80,8 +116,6 @@ export function Toolbar() {
       board: s.doc.board,
       naming: namingOf(s.doc),
       origin: originOf(s.doc),
-      fileId: s.fileId,
-      files: s.files,
       menu: s.menu,
       tool: s.tool,
       wireColor: s.wireColor,
@@ -104,52 +138,87 @@ export function Toolbar() {
           </DropdownMenu.Trigger>
         </Tip>
         <DropdownMenu.Portal>
-          <DropdownMenu.Content className="menu" align="start" sideOffset={6}>
-            <Item command="open" />
-            <Item command="save" />
-            <Item command="review" />
-            <Item command="copyJson" />
-            <DropdownMenu.Separator className="menu-sep" />
-            <DropdownMenu.Sub>
-              <SubTrigger>Board size</SubTrigger>
-              <DropdownMenu.Portal>
-                <DropdownMenu.SubContent className="menu" sideOffset={4}>
-                  <BoardSizes value={s.board} onPick={changeBoard} />
-                </DropdownMenu.SubContent>
-              </DropdownMenu.Portal>
-            </DropdownMenu.Sub>
-            <DropdownMenu.Sub>
-              <SubTrigger>Turn board</SubTrigger>
-              <DropdownMenu.Portal>
-                <DropdownMenu.SubContent className="menu" sideOffset={4}>
-                  <Item command="rotateBoard" />
-                  <Item command="rotateBoardBack" />
-                  <Item command="rotateBoardHalf" />
-                </DropdownMenu.SubContent>
-              </DropdownMenu.Portal>
-            </DropdownMenu.Sub>
-            <DropdownMenu.Sub>
-              <SubTrigger>Hole labels</SubTrigger>
-              <DropdownMenu.Portal>
-                <DropdownMenu.SubContent className="menu" sideOffset={4}>
-                  <DropdownMenu.RadioGroup value={s.naming} onValueChange={(v) => setNaming(v as Naming)}>
-                    {NAMINGS.map((n) => (
-                      <DropdownMenu.RadioItem key={n.id} value={n.id} className="menu-item">
-                        {n.label} <span className="menu-hint">{n.example}</span>
-                      </DropdownMenu.RadioItem>
-                    ))}
-                  </DropdownMenu.RadioGroup>
-                  <DropdownMenu.Separator className="menu-sep" />
-                  <DropdownMenu.Label className="menu-label">Numbers from</DropdownMenu.Label>
-                  <DropdownMenu.RadioGroup value={s.origin} onValueChange={(v) => setOrigin(v as Origin)}>
-                    {ORIGINS.map((o) => (
-                      <DropdownMenu.RadioItem key={o} value={o} className="menu-item">{originLabel(o)}</DropdownMenu.RadioItem>
-                    ))}
-                  </DropdownMenu.RadioGroup>
-                </DropdownMenu.SubContent>
-              </DropdownMenu.Portal>
-            </DropdownMenu.Sub>
-            <Item command="fit" />
+          <DropdownMenu.Content className="menu" align="start" sideOffset={6} onCloseAutoFocus={leaveFocus}>
+            <Sub label="File">
+              <NewBoard />
+              <Sub label="Open board">
+                <BoardList />
+              </Sub>
+              <Item command="duplicateBoard" />
+              <Separator />
+              <Item command="open" />
+              <Item command="save" />
+              <Separator />
+              <Item command="importAll" />
+              <Item command="exportAll" />
+              <Separator />
+              <Item command="review" />
+              <Item command="copyJson" />
+              <Separator />
+              <Item command="deleteBoard" />
+            </Sub>
+            <Sub label="Edit">
+              <Item command="undo" />
+              <Item command="redo" />
+              <Separator />
+              <Item command="cut" />
+              <Item command="copy" />
+              <Item command="paste" />
+              <Item command="duplicate" />
+              <Item command="delete" />
+              <Item command="selectAll" />
+              <Separator />
+              <Item command="rotate" />
+              <Item command="rotateBack" />
+              <Item command="otherSide" />
+              <Item command="upsideDown" />
+              <Item command="front" />
+              <Item command="back" />
+            </Sub>
+            <Sub label="View">
+              <Item command="parts" />
+              <Item command="wires" />
+              <Item command="far" />
+              <Item command="names" />
+              <Separator />
+              <Item command="single" />
+              <Item command="split" />
+              <Item command="flip" />
+              <Item command="fit" />
+              <Separator />
+              <Item command="properties" />
+              <Item command="partList" />
+              <Item command="checks" />
+              <Item command="keys" />
+              <Separator />
+              <Item command="palette" />
+            </Sub>
+            <Sub label="Board">
+              <Sub label="Board size">
+                <BoardSizes value={s.board} onPick={changeBoard} />
+              </Sub>
+              <Sub label="Turn board">
+                <Item command="rotateBoard" />
+                <Item command="rotateBoardBack" />
+                <Item command="rotateBoardHalf" />
+              </Sub>
+              <Sub label="Hole labels">
+                <DropdownMenu.RadioGroup value={s.naming} onValueChange={(v) => setNaming(v as Naming)}>
+                  {NAMINGS.map((n) => (
+                    <DropdownMenu.RadioItem key={n.id} value={n.id} className="menu-item">
+                      {n.label} <span className="menu-hint">{n.example}</span>
+                    </DropdownMenu.RadioItem>
+                  ))}
+                </DropdownMenu.RadioGroup>
+                <Separator />
+                <DropdownMenu.Label className="menu-label">Numbers from</DropdownMenu.Label>
+                <DropdownMenu.RadioGroup value={s.origin} onValueChange={(v) => setOrigin(v as Origin)}>
+                  {ORIGINS.map((o) => (
+                    <DropdownMenu.RadioItem key={o} value={o} className="menu-item">{originLabel(o)}</DropdownMenu.RadioItem>
+                  ))}
+                </DropdownMenu.RadioGroup>
+              </Sub>
+            </Sub>
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
@@ -169,30 +238,11 @@ export function Toolbar() {
             </DropdownMenu.Trigger>
           </Tip>
           <DropdownMenu.Portal>
-            <DropdownMenu.Content className="menu files" align="start" sideOffset={6}>
+            <DropdownMenu.Content className="menu files" align="start" sideOffset={6} onCloseAutoFocus={leaveFocus}>
               <DropdownMenu.Label className="menu-label">Boards</DropdownMenu.Label>
-              <DropdownMenu.RadioGroup value={s.fileId} onValueChange={openFile}>
-                {s.files.map((f) => (
-                  <DropdownMenu.RadioItem key={f.id} value={f.id} className="menu-item">
-                    <span className="file-name">{f.name || 'Untitled'}</span>
-                    <span className="menu-hint">{ago(f.updated)}</span>
-                  </DropdownMenu.RadioItem>
-                ))}
-              </DropdownMenu.RadioGroup>
-              <DropdownMenu.Separator className="menu-sep" />
-              <DropdownMenu.Sub>
-                <SubTrigger command="newBoard">New board</SubTrigger>
-                <DropdownMenu.Portal>
-                  <DropdownMenu.SubContent className="menu" sideOffset={4}>
-                    <BoardSizes onPick={newBoard} />
-                  </DropdownMenu.SubContent>
-                </DropdownMenu.Portal>
-              </DropdownMenu.Sub>
-              <Item command="duplicateBoard" />
-              <Item command="deleteBoard" />
-              <DropdownMenu.Separator className="menu-sep" />
-              <Item command="exportAll" />
-              <Item command="importAll" />
+              <BoardList />
+              <Separator />
+              <NewBoard />
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
         </DropdownMenu.Root>

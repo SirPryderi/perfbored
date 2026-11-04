@@ -149,6 +149,7 @@ input { font: inherit; color: inherit; }
 }
 .menu-item[data-highlighted], .menu-item[data-state='open'] { background: var(--accent-soft); color: var(--accent); }
 .menu-item[data-state='checked'] { font-weight: 500; }
+.menu-item[data-disabled] { opacity: 0.45; }
 .menu-hint { color: var(--ink-3); font-size: 12px; }
 .menu-end { display: inline-flex; align-items: center; gap: 6px; margin-right: -4px; color: var(--ink-3); }
 .menu-sep { height: 1px; background: var(--line); margin: 4px 2px; }

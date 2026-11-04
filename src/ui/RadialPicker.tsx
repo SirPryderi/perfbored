@@ -3,7 +3,7 @@ import { applyColour, currentColour } from '../actions'
 import { WIRE_COLORS } from '../model/routing'
 import { useEditor } from '../store'
 import { commands, matches } from '../keymap'
-import { typing } from '../useShortcuts'
+import { ownsKeys } from '../useShortcuts'
 
 const RADIUS = 74
 const DEAD_ZONE = 28
@@ -46,7 +46,7 @@ export function RadialPicker() {
     }
     const onDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && openAt.current) return close()
-      if (e.repeat || typing(e.target) || useEditor.getState().palette || !commands.colour.keys.some((k) => matches(k, e))) return
+      if (e.repeat || ownsKeys(e.target) || useEditor.getState().palette || !commands.colour.keys.some((k) => matches(k, e))) return
       e.preventDefault()
       if (openAt.current) return close()
       openAt.current = { ...pointer.current }

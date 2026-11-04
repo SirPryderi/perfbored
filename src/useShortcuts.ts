@@ -3,8 +3,12 @@ import { finishDraft, undoDraftPoint } from './actions'
 import { commands, matches } from './keymap'
 import { useEditor } from './store'
 
-export const typing = (t: EventTarget | null) =>
-  t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))
+// Text fields, and open menus and dropdowns, use the keys themselves.
+export const ownsKeys = (t: EventTarget | null) =>
+  t instanceof HTMLElement &&
+  (t.isContentEditable ||
+    ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) ||
+    !!t.closest('[role="menu"], [role="listbox"], [role="combobox"]'))
 
 export function useShortcuts() {
   useEffect(() => {
@@ -15,7 +19,7 @@ export function useShortcuts() {
         e.preventDefault()
         return s.setPalette(!s.palette)
       }
-      if (s.palette || typing(e.target)) return
+      if (s.palette || ownsKeys(e.target)) return
       if (s.draft) {
         const draftKeys: Record<string, () => void> = {
           Enter: finishDraft,
