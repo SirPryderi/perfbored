@@ -1,7 +1,5 @@
 import {
-  CheckIcon,
   ChevronDownIcon,
-  ChevronRightIcon,
   ColumnsIcon,
   CursorArrowIcon,
   GitHubLogoIcon,
@@ -16,13 +14,12 @@ import {
 } from '@radix-ui/react-icons'
 import { DropdownMenu, Toolbar as Bar } from 'radix-ui'
 import { useShallow } from 'zustand/react/shallow'
-import { changeBoard, importJson, newBoard, openFile, setNaming, setOrigin } from '../actions'
+import { importJson, newBoard, openFile } from '../actions'
 import { ago } from '../files'
 import { commands, type CommandId } from '../keymap'
-import { boards } from '../library'
-import { NAMINGS, namingOf, originLabel, originOf, ORIGINS, type Naming, type Origin } from '../model/naming'
 import { useEditor, type Layer, type Layout, type Tool } from '../store'
-import { Keys, Tip } from './Tip'
+import { dropdown, leaveFocus } from './menus'
+import { Tip } from './Tip'
 
 export const REPO = 'https://github.com/SirPryderi/perfbored'
 
@@ -40,53 +37,7 @@ const LAYERS: { id: Layer; label: string; command: CommandId }[] = [
   { id: 'names', label: 'Names', command: 'names' },
 ]
 
-function Item({ command }: { command: CommandId }) {
-  const { label, keys, danger, run, when, on } = commands[command]
-  return (
-    <DropdownMenu.Item className={danger ? 'menu-item danger' : 'menu-item'} disabled={when?.() === false} onSelect={() => run?.()}>
-      {label}
-      <span className="menu-end">
-        {on?.() && <CheckIcon />}
-        {keys.length > 0 && <Keys command={command} />}
-      </span>
-    </DropdownMenu.Item>
-  )
-}
-
-function Sub({ label, command, children }: { label: string; command?: CommandId; children: React.ReactNode }) {
-  return (
-    <DropdownMenu.Sub>
-      <DropdownMenu.SubTrigger className="menu-item">
-        {label}
-        <span className="menu-end">
-          {command && <Keys command={command} />}
-          <ChevronRightIcon />
-        </span>
-      </DropdownMenu.SubTrigger>
-      <DropdownMenu.Portal>
-        <DropdownMenu.SubContent className="menu" sideOffset={4}>{children}</DropdownMenu.SubContent>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Sub>
-  )
-}
-
-// A closed menu hands the keyboard back to the board. Left on its trigger, the
-// arrows that nudge the selection would open the menu again.
-const leaveFocus = (e: Event) => e.preventDefault()
-
-const Separator = () => <DropdownMenu.Separator className="menu-sep" />
-
-function BoardSizes({ value, onPick }: { value?: string; onPick: (id: string) => void }) {
-  return (
-    <DropdownMenu.RadioGroup value={value} onValueChange={onPick}>
-      {boards.map((b) => (
-        <DropdownMenu.RadioItem key={b.id} value={b.id} className="menu-item">
-          {b.name} <span className="menu-hint">{b.cols} × {b.rows}</span>
-        </DropdownMenu.RadioItem>
-      ))}
-    </DropdownMenu.RadioGroup>
-  )
-}
+const { Item, Sub, Separator, BoardSizes, BoardItems } = dropdown
 
 function BoardList() {
   const files = useEditor((s) => s.files)
@@ -113,9 +64,6 @@ export function Toolbar() {
   const s = useEditor(
     useShallow((s) => ({
       name: s.doc.name,
-      board: s.doc.board,
-      naming: namingOf(s.doc),
-      origin: originOf(s.doc),
       menu: s.menu,
       tool: s.tool,
       wireColor: s.wireColor,
@@ -194,30 +142,7 @@ export function Toolbar() {
               <Item command="palette" />
             </Sub>
             <Sub label="Board">
-              <Sub label="Board size">
-                <BoardSizes value={s.board} onPick={changeBoard} />
-              </Sub>
-              <Sub label="Turn board">
-                <Item command="rotateBoard" />
-                <Item command="rotateBoardBack" />
-                <Item command="rotateBoardHalf" />
-              </Sub>
-              <Sub label="Hole labels">
-                <DropdownMenu.RadioGroup value={s.naming} onValueChange={(v) => setNaming(v as Naming)}>
-                  {NAMINGS.map((n) => (
-                    <DropdownMenu.RadioItem key={n.id} value={n.id} className="menu-item">
-                      {n.label} <span className="menu-hint">{n.example}</span>
-                    </DropdownMenu.RadioItem>
-                  ))}
-                </DropdownMenu.RadioGroup>
-                <Separator />
-                <DropdownMenu.Label className="menu-label">Numbers from</DropdownMenu.Label>
-                <DropdownMenu.RadioGroup value={s.origin} onValueChange={(v) => setOrigin(v as Origin)}>
-                  {ORIGINS.map((o) => (
-                    <DropdownMenu.RadioItem key={o} value={o} className="menu-item">{originLabel(o)}</DropdownMenu.RadioItem>
-                  ))}
-                </DropdownMenu.RadioGroup>
-              </Sub>
+              <BoardItems />
             </Sub>
           </DropdownMenu.Content>
         </DropdownMenu.Portal>

@@ -58,6 +58,7 @@ interface EditorState {
   layout: Layout
   facing: Side
   hover: Hover | null
+  lastSide: Side
   highlight: Hole[] | null
   draft: Draft | null
   fitNonce: number
@@ -110,6 +111,7 @@ export const useEditor = create<EditorState>((set) => ({
   layout: 'single',
   facing: 'front',
   hover: null,
+  lastSide: 'front',
   highlight: null,
   draft: null,
   fitNonce: 0,
@@ -153,7 +155,7 @@ export const useEditor = create<EditorState>((set) => ({
   setView: (key, view) => set((s) => ({ views: { ...s.views, [key]: view } })),
   setLayout: (layout) => set((s) => ({ layout, fitNonce: s.fitNonce + 1 })),
   flip: () => set((s) => ({ facing: s.facing === 'front' ? 'back' : 'front' })),
-  setHover: (hover) => set({ hover }),
+  setHover: (hover) => set((s) => ({ hover, lastSide: hover?.side ?? s.lastSide })),
   setHighlight: (highlight) => set({ highlight }),
   setDraft: (draft) => set({ draft }),
   requestFit: () => set((s) => ({ fitNonce: s.fitNonce + 1 })),

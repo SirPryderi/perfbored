@@ -1,11 +1,11 @@
 import { docBoard, partById } from './library'
 import { about, centreOf, copies, mirrorShift, move, otherSide, pick, remove, turn, type Items } from './items'
 import { emptyDoc, newId, parseDoc, updatePart } from './model/doc'
-import { partPins, propsOf } from './model/geometry'
+import { isMirrored, partPins, propsOf } from './model/geometry'
 import type { Naming, Origin } from './model/naming'
 import { simplify } from './model/routing'
 import { exportBoards, importBoards, listFiles, loadFile, removeFile, saveFile } from './files'
-import type { Doc, Hole, PartDef, PartInstance, Rotation } from './model/types'
+import type { Doc, Hole, PartDef, PartInstance, Rotation, Side } from './model/types'
 import { describe } from './report'
 import { isSelected, only, useEditor, type Item } from './store'
 
@@ -23,14 +23,26 @@ const asSelection = (items: Items): Item[] => [
   ...items.wires.map((w) => ({ kind: 'wire' as const, id: w.id })),
 ]
 
-// One part turns about its first pin, as it always has; anything more turns
-// as a group about its middle, so wires stay on the legs they end on.
-export function rotate(delta: 90 | -90) {
+// The side being looked at; in the split view, the pane the pointer was last in.
+const viewedSide = (): Side => {
   const s = state()
-  const spin = (rot: Rotation) => (((rot + delta + 360) % 360) as Rotation)
-  if (s.placing) return s.setPlacing({ ...s.placing, rot: spin(s.placing.rot) })
+  return s.layout === 'single' ? s.facing : s.lastSide
+}
+
+// A positive delta turns clockwise as seen on screen, whichever side is showing.
+// One part turns about its first pin; anything more turns as a group about its
+// middle, so wires stay on the legs they end on.
+export function rotate(clockwise: 90 | -90) {
+  const s = state()
+  const view = viewedSide()
+  const delta = view === 'back' ? (-clockwise as 90 | -90) : clockwise
+  const spin = (part: PartInstance) => {
+    const by = isMirrored(part) ? -delta : delta
+    return ((part.rot + by + 360) % 360) as Rotation
+  }
+  if (s.placing) return s.setPlacing({ ...s.placing, rot: spin({ ...s.placing, side: view }) })
   const part = selectedPart()
-  if (part) return s.change((d) => updatePart(d, part.id, { rot: spin(part.rot) }))
+  if (part) return s.change((d) => updatePart(d, part.id, { rot: spin(part) }))
   const ids = selectedIds()
   if (ids.size) s.change((d) => turn(d, ids, delta, about(centreOf(pick(d, ids)), delta)))
 }
@@ -144,11 +156,10 @@ export function cut() {
 }
 
 // Pastes centred on the hole under the pointer, or next to the originals.
-export function paste() {
+export function paste(at = state().hover?.hole) {
   if (!clipboard) return false
-  const hover = state().hover?.hole
   const [cc, cr] = centreOf(clipboard)
-  const [dc, dr] = hover ? [hover[0] - cc, hover[1] - cr] : [2, 2]
+  const [dc, dr] = at ? [at[0] - cc, at[1] - cr] : [2, 2]
   add(copies(clipboard, dc, dr))
 }
 
@@ -167,6 +178,11 @@ function coloured(s = state()) {
   const wires = s.doc.wires.filter((w) => isSelected(s.selection, w.id))
   const parts = s.doc.parts.filter((p) => isSelected(s.selection, p.id) && colourKey(p))
   return { wires, parts }
+}
+
+export const canColour = () => {
+  const { wires, parts } = coloured()
+  return wires.length + parts.length > 0
 }
 
 export function currentColour(s = state()) {
@@ -235,9 +251,11 @@ export function deleteFile(id: string) {
 }
 
 // Turning the board leaves every part where it physically is: holes rotate
-// with the board, and so does everything on it.
-export function rotateBoard(delta: 90 | -90 | 180) {
+// with the board, and so does everything on it. Right is clockwise as seen on
+// screen, whichever side is showing.
+export function rotateBoard(clockwise: 90 | -90 | 180) {
   const s = state()
+  const delta = clockwise !== 180 && viewedSide() === 'back' ? (-clockwise as 90 | -90) : clockwise
   const { cols, rows } = docBoard(s.doc)
   const map = ([c, r]: Hole): Hole =>
     delta === 90 ? [rows - 1 - r, c] : delta === -90 ? [r, cols - 1 - c] : [cols - 1 - c, rows - 1 - r]

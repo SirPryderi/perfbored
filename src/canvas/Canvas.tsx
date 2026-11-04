@@ -1,3 +1,4 @@
+import { ContextMenu } from 'radix-ui'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { docBoard, partById, pinsAt } from '../library'
@@ -8,10 +9,12 @@ import { corner, moveVertex, naturalBend, simplify } from '../model/routing'
 import type { BoardDef, Doc, Hole, PartInstance, Side, Wire } from '../model/types'
 import { holesOf, move } from '../items'
 import { isSelected, only, useEditor, type Draft, type Item, type ViewKey } from '../store'
+import { leaveFocus } from '../ui/menus'
 import { useAnalysis } from '../useAnalysis'
 import type { Net } from '../analysis'
 import { coords } from '../model/naming'
 import { BoardView } from './BoardView'
+import { CanvasMenu } from './CanvasMenu'
 import { layoutNames, NamesLayer } from './NamesLayer'
 import { PartBody, PinsLayer, SelectionOutline, type Placed } from './PartView'
 import { PinLabelEditor } from './PinLabelEditor'
@@ -66,6 +69,7 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
   const [space, setSpace] = useState(false)
   const [straight, setStraight] = useState(false)
   const [box, setBox] = useState<[Hole, Hole] | null>(null)
+  const [menuHole, setMenuHole] = useState<Hole | null>(null)
   const analysis = useAnalysis()
   const { doc, view, tool, placing, layers, selection, hover, draft, wireColor, fitNonce, highlight, pinEdit } = useEditor(
     useShallow((s) => ({
@@ -212,7 +216,29 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
     finishDraft()
   }
 
+  const itemAt = (e: React.MouseEvent): Item | null => {
+    const element = e.target as Element
+    const wireId = element.closest('[data-vertex]') && only(useEditor.getState().selection, 'wire')
+    if (wireId) return { kind: 'wire', id: wireId }
+    const target = element.closest('[data-part],[data-wire]')
+    const part = target?.getAttribute('data-part')
+    const wire = target?.getAttribute('data-wire')
+    return part ? { kind: 'part', id: part } : wire ? { kind: 'wire', id: wire } : null
+  }
+
+  // Selects what a click would, keeping a selection the click landed inside.
+  // Mid-placement or mid-wire there is nothing to offer, and no browser menu.
+  const onContextMenu = (e: React.MouseEvent) => {
+    const s = useEditor.getState()
+    if (s.placing || s.draft) return e.preventDefault()
+    const item = itemAt(e)
+    if (!item) s.select([])
+    else if (!isSelected(s.selection, item.id)) s.select([item])
+    setMenuHole(holeAt(e))
+  }
+
   const onPointerDown = (e: React.PointerEvent) => {
+    if (e.button === 2 || (e.button === 0 && e.ctrlKey)) return
     const s = useEditor.getState()
     svgRef.current!.setPointerCapture(e.pointerId)
     const hole = holeAt(e)
@@ -228,10 +254,7 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
       drag.current = { kind: 'vertex', id: wire.id, index: Number(vertex.getAttribute('data-vertex')), points: wire.points, moved: false }
       return
     }
-    const target = (e.target as Element).closest('[data-part],[data-wire]')
-    const partId = target?.getAttribute('data-part')
-    const wireId = target?.getAttribute('data-wire')
-    const item: Item | null = partId ? { kind: 'part', id: partId } : wireId ? { kind: 'wire', id: wireId } : null
+    const item = itemAt(e)
     if (!item) {
       // Shift-drag on empty board draws a selection box; a plain drag pans.
       if (e.shiftKey) {
@@ -347,60 +370,69 @@ export function Canvas({ facing, viewKey }: { facing: Side; viewKey: ViewKey }) 
 
   return (
     <div className="canvas-wrap">
-      <svg
-        ref={svgRef}
-        className={`canvas mode-${mode}${probed ? ' probing' : ''}`}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerLeave={() => useEditor.getState().setHover(null)}
-        onDoubleClick={(e) => tool === 'select' && !placing && editPinLabel(holeAt(e), facing)}
-      >
-        <g transform={world}>
-          <BoardView board={board} coords={coords(doc, board)} mirrored={mirrored} />
-          {layers.far && layers.bodies && far.map((p) => <PartBody key={p.part.id} {...p} board={board} far />)}
-          {layers.far && layers.wires &&
-            doc.wires.filter((w) => w.side !== shown).map((w) => <WireView key={w.id} {...w} board={board} far live={liveWires.has(w.id)} />)}
-          <PinsLayer items={placed} board={board} facing={shown} conflicts={conflicts} live={liveHoles} />
-          {layers.wires &&
-            doc.wires.filter((w) => w.side === shown).map((w) => (
-              <WireView key={w.id} {...w} board={board} selected={isSelected(selection, w.id)} live={liveWires.has(w.id)} />
-            ))}
-          {layers.wires &&
-            analysis.junctions.map(({ hole: h, side, color, wire }) => {
-              const { x, y } = holeToMm(board, h)
-              const cls = ['junction', side !== shown && 'far', liveWires.has(wire) && 'live'].filter(Boolean).join(' ')
-              return <circle key={`${h}`} className={cls} cx={x} cy={y} r={0.52} style={{ fill: color }} />
-            })}
-          {layers.bodies && notes.map((p) => <PartBody key={p.part.id} {...p} board={board} />)}
-          {layers.bodies && near.map((p) => <PartBody key={p.part.id} {...p} board={board} />)}
-          {layers.names && <NamesLayer names={names} board={board} mirrored={mirrored} />}
-          {probed && <ProbeOverlay net={probed} wires={doc.wires} board={board} shown={shown} />}
-          {selectedParts.map((p) => <SelectionOutline key={p.part.id} {...p} board={board} />)}
-          {handles && tool === 'select' && <WireHandles points={handles.points} board={board} />}
-          {box && <SelectionBox box={box} board={board} />}
-          {ghost && (
-            <>
-              <PartBody {...ghost} board={board} ghost far={ghost.part.side !== shown} />
-              <PinsLayer items={[ghost]} board={board} facing={shown} ghost />
-            </>
-          )}
-          {draft && (
-            <WireView
-              points={draftRoute(draft, here, straight)}
-              color={wireColor}
-              board={board}
-              far={draft.side !== shown}
-              draft
-            />
-          )}
-          {here && (tool === 'wire' || placing || hoverPins.length > 0) && <HoverRing board={board} hole={here} />}
-          {rings.map((h) => {
-            const { x, y } = holeToMm(board, h)
-            return <circle key={holeKey(h)} className="check-ring" cx={x} cy={y} r={1.6} />
-          })}
-        </g>
-      </svg>
+      <ContextMenu.Root>
+        <ContextMenu.Trigger asChild onContextMenu={onContextMenu}>
+          <svg
+            ref={svgRef}
+            className={`canvas mode-${mode}${probed ? ' probing' : ''}`}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerLeave={() => useEditor.getState().setHover(null)}
+            onDoubleClick={(e) => tool === 'select' && !placing && editPinLabel(holeAt(e), facing)}
+          >
+            <g transform={world}>
+              <BoardView board={board} coords={coords(doc, board)} mirrored={mirrored} />
+              {layers.far && layers.bodies && far.map((p) => <PartBody key={p.part.id} {...p} board={board} far />)}
+              {layers.far && layers.wires &&
+                doc.wires.filter((w) => w.side !== shown).map((w) => <WireView key={w.id} {...w} board={board} far live={liveWires.has(w.id)} />)}
+              <PinsLayer items={placed} board={board} facing={shown} conflicts={conflicts} live={liveHoles} />
+              {layers.wires &&
+                doc.wires.filter((w) => w.side === shown).map((w) => (
+                  <WireView key={w.id} {...w} board={board} selected={isSelected(selection, w.id)} live={liveWires.has(w.id)} />
+                ))}
+              {layers.wires &&
+                analysis.junctions.map(({ hole: h, side, color, wire }) => {
+                  const { x, y } = holeToMm(board, h)
+                  const cls = ['junction', side !== shown && 'far', liveWires.has(wire) && 'live'].filter(Boolean).join(' ')
+                  return <circle key={`${h}`} className={cls} cx={x} cy={y} r={0.52} style={{ fill: color }} />
+                })}
+              {layers.bodies && notes.map((p) => <PartBody key={p.part.id} {...p} board={board} />)}
+              {layers.bodies && near.map((p) => <PartBody key={p.part.id} {...p} board={board} />)}
+              {layers.names && <NamesLayer names={names} board={board} mirrored={mirrored} />}
+              {probed && <ProbeOverlay net={probed} wires={doc.wires} board={board} shown={shown} />}
+              {selectedParts.map((p) => <SelectionOutline key={p.part.id} {...p} board={board} />)}
+              {handles && tool === 'select' && <WireHandles points={handles.points} board={board} />}
+              {box && <SelectionBox box={box} board={board} />}
+              {ghost && (
+                <>
+                  <PartBody {...ghost} board={board} ghost far={ghost.part.side !== shown} />
+                  <PinsLayer items={[ghost]} board={board} facing={shown} ghost />
+                </>
+              )}
+              {draft && (
+                <WireView
+                  points={draftRoute(draft, here, straight)}
+                  color={wireColor}
+                  board={board}
+                  far={draft.side !== shown}
+                  draft
+                />
+              )}
+              {here && (tool === 'wire' || placing || hoverPins.length > 0) && <HoverRing board={board} hole={here} />}
+              {rings.map((h) => {
+                const { x, y } = holeToMm(board, h)
+                return <circle key={holeKey(h)} className="check-ring" cx={x} cy={y} r={1.6} />
+              })}
+            </g>
+          </svg>
+        </ContextMenu.Trigger>
+        <ContextMenu.Portal>
+          <ContextMenu.Content className="menu" onCloseAutoFocus={leaveFocus}>
+            {menuHole && <CanvasMenu hole={menuHole} facing={facing} />}
+          </ContextMenu.Content>
+        </ContextMenu.Portal>
+      </ContextMenu.Root>
       {tip && <PinTip x={tip.x} y={tip.y} pins={hoverPins} />}
       {probed && probeTip && <ProbeTip x={probeTip.x} y={probeTip.y} net={probed} />}
       {pinEdit && editing && <PinLabelEditor key={`${pinEdit.partId}:${pinEdit.index}`} edit={pinEdit} x={editing.x} y={editing.y} />}
